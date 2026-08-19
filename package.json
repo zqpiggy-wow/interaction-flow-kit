@@ -4,8 +4,8 @@
   "description": "Agent skill and CLI for keeping product interaction flows usable during planning and coding",
   "type": "module",
   "bin": {
-    "interaction-flow-kit": "./bin/interaction-flow-kit.mjs",
-    "ifk": "./bin/interaction-flow-kit.mjs"
+    "interaction-flow-kit": "bin/interaction-flow-kit.mjs",
+    "ifk": "bin/interaction-flow-kit.mjs"
   },
   "files": [
     "agents",
@@ -44,7 +44,6 @@
   },
   "license": "MIT",
   "publishConfig": {
-    "access": "public",
-    "provenance": true
+    "access": "public"
   }
 }
