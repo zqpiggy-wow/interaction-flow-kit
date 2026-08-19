@@ -1,0 +1,50 @@
+{
+  "name": "interaction-flow-kit",
+  "version": "0.1.0",
+  "description": "Agent skill and CLI for keeping product interaction flows usable during planning and coding",
+  "type": "module",
+  "bin": {
+    "interaction-flow-kit": "./bin/interaction-flow-kit.mjs",
+    "ifk": "./bin/interaction-flow-kit.mjs"
+  },
+  "files": [
+    "agents",
+    "bin",
+    "references",
+    "schemas",
+    "scripts",
+    "SKILL.md",
+    "README.md",
+    "CHANGELOG.md",
+    "SUPPORT.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "test": "node --test",
+    "validate": "node ./bin/interaction-flow-kit.mjs validate",
+    "check": "npm run validate && npm test"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "keywords": [
+    "agent-skill",
+    "codex",
+    "interaction-design",
+    "product-ux",
+    "workflow"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/zqpiggy-wow/interaction-flow-kit.git"
+  },
+  "homepage": "https://github.com/zqpiggy-wow/interaction-flow-kit#readme",
+  "bugs": {
+    "url": "https://github.com/zqpiggy-wow/interaction-flow-kit/issues"
+  },
+  "license": "MIT",
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  }
+}

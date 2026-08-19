@@ -1,0 +1,143 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/zqpiggy-wow/interaction-flow-kit/main/schemas/flow-contract.schema.json",
+  "title": "Interaction Flow Contract",
+  "description": "A compact, implementation-oriented contract for a non-trivial user flow.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["feature", "intent", "flow"],
+  "properties": {
+    "feature": { "type": "string", "minLength": 1 },
+    "intent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["trigger", "desired_change", "completion"],
+      "properties": {
+        "actor": { "type": "string", "minLength": 1 },
+        "trigger": { "type": "string", "minLength": 1 },
+        "stated_means": { "type": "string", "minLength": 1 },
+        "desired_change": { "type": "string", "minLength": 1 },
+        "completion": { "type": "string", "minLength": 1 },
+        "constraints": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "uniqueItems": true
+        },
+        "assumptions": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "uniqueItems": true
+        }
+      }
+    },
+    "flow": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["entry", "steps", "continuation"],
+      "properties": {
+        "entry": { "type": "string", "minLength": 1 },
+        "steps": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/step" }
+        },
+        "continuation": { "type": "string", "minLength": 1 },
+        "recovery": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/recovery" }
+        }
+      }
+    },
+    "technical": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "owners": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/owner" }
+        },
+        "interfaces": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/interface" }
+        },
+        "data_flows": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/dataFlow" }
+        },
+        "invariants": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "uniqueItems": true
+        },
+        "verification": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "uniqueItems": true
+        }
+      }
+    }
+  },
+  "$defs": {
+    "step": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "action"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^[A-Za-z][A-Za-z0-9_-]*$" },
+        "actor": { "type": "string", "minLength": 1 },
+        "action": { "type": "string", "minLength": 1 },
+        "system_effect": { "type": "string", "minLength": 1 },
+        "feedback": { "type": "string", "minLength": 1 },
+        "next": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "uniqueItems": true
+        }
+      }
+    },
+    "recovery": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["condition", "behavior"],
+      "properties": {
+        "condition": { "type": "string", "minLength": 1 },
+        "behavior": { "type": "string", "minLength": 1 },
+        "preserves": { "type": "string", "minLength": 1 }
+      }
+    },
+    "owner": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["concern", "owner", "source_of_truth"],
+      "properties": {
+        "concern": { "type": "string", "minLength": 1 },
+        "owner": { "type": "string", "minLength": 1 },
+        "source_of_truth": { "type": "string", "minLength": 1 }
+      }
+    },
+    "interface": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "kind", "contract"],
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "kind": { "type": "string", "minLength": 1 },
+        "contract": { "type": "string", "minLength": 1 },
+        "failure_semantics": { "type": "string", "minLength": 1 }
+      }
+    },
+    "dataFlow": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["data", "from", "to", "purpose"],
+      "properties": {
+        "data": { "type": "string", "minLength": 1 },
+        "from": { "type": "string", "minLength": 1 },
+        "to": { "type": "string", "minLength": 1 },
+        "purpose": { "type": "string", "minLength": 1 },
+        "validation": { "type": "string", "minLength": 1 },
+        "failure": { "type": "string", "minLength": 1 }
+      }
+    }
+  }
+}
