@@ -71,6 +71,133 @@ test('flow contract initializes, validates graph references, and renders technic
   assert.match(JSON.stringify(JSON.parse(invalid.stdout).errors), /unknown-step/);
 });
 
+test('cross-stage replay contract distinguishes task identity from selectable result data', async () => {
+  const sandbox = await mkdtemp(join(tmpdir(), 'ifk-lineage-test-'));
+  const contractPath = join(sandbox, 'replay-flow.json');
+  const contract = JSON.parse(run(['contract', 'init', 'Replay to analysis']).stdout);
+  contract.flow.steps = [
+    {
+      id: 'replay',
+      actor: 'Analyst',
+      action: 'Run historical replay',
+      system_effect: 'Persist replay status and result data',
+      feedback: 'Show status, metrics, items, warnings, and empty or partial output',
+      next: ['analyze'],
+      reads: [],
+      writes: ['replayTask', 'replayDataset'],
+    },
+    {
+      id: 'analyze',
+      actor: 'Analyst',
+      action: 'Analyze a compatible replay result',
+      system_effect: 'Persist analysis with source provenance',
+      feedback: 'Show the selected replay source and analysis',
+      next: [],
+      reads: ['replayDataset'],
+      writes: [],
+    },
+  ];
+  contract.technical.data_objects = [
+    {
+      id: 'replayTask',
+      kind: 'operation',
+      identity: 'replay_task_id',
+      produced_by: 'replay',
+      owner: 'Replay service',
+      source_of_truth: 'replay_tasks',
+      user_projection: 'Status, phase, failure, and retry history',
+      lifecycle: 'Created on submit and terminal after execution',
+    },
+    {
+      id: 'replayDataset',
+      kind: 'dataset',
+      identity: 'replay_result_id distinct from replay_task_id',
+      produced_by: 'replay',
+      owner: 'Replay service',
+      source_of_truth: 'replay_results and result object storage',
+      user_projection: 'Market, time range, strategy, metrics, securities, warnings, and empty state',
+      lifecycle: 'Created for completed or partial replay and retained for reuse',
+    },
+  ];
+  contract.technical.data_bindings = [
+    {
+      from_step: 'replay',
+      to_step: 'analyze',
+      data_object: 'replayDataset',
+      binding: 'select-compatible',
+      request_fields: ['source_replay_result_id'],
+      response_fields: ['source_replay_summary'],
+      selection_query: 'List completed visible replay results, newest first',
+      compatibility: ['tenant', 'market', 'strategy_hash', 'data_version'],
+      provenance: 'Persist result ID and show replay summary in analysis',
+      correction: 'Change source before submit or start an independent analysis mode',
+      staleness: 'Keep historical provenance and mark analysis stale if mutable inputs are superseded',
+      empty_behavior: 'Explain why no result is compatible and link to create a replay without losing analysis inputs',
+    },
+  ];
+  await writeFile(contractPath, JSON.stringify(contract));
+
+  const valid = run(['contract', 'validate', contractPath, '--json']);
+  assert.equal(valid.status, 0, valid.stderr || valid.stdout);
+  assert.equal(JSON.parse(valid.stdout).valid, true);
+
+  const rendered = run(['contract', 'render', contractPath]);
+  assert.equal(rendered.status, 0, rendered.stderr);
+  assert.match(rendered.stdout, /## Data objects/);
+  assert.match(rendered.stdout, /\| Reads \| Writes \|/);
+  assert.match(rendered.stdout, /replay_task_id/);
+  assert.match(rendered.stdout, /replay_result_id distinct from replay_task_id/);
+  assert.match(rendered.stdout, /## Stage data lineage/);
+  assert.match(rendered.stdout, /select-compatible/);
+  assert.match(rendered.stdout, /source_replay_result_id/);
+});
+
+test('lineage validation rejects implicit or unusable cross-stage handoffs', async () => {
+  const sandbox = await mkdtemp(join(tmpdir(), 'ifk-lineage-invalid-test-'));
+  const contractPath = join(sandbox, 'invalid-lineage.json');
+  const contract = JSON.parse(run(['contract', 'init', 'Broken pipeline']).stdout);
+  contract.flow.steps = [
+    { id: 'produce', action: 'Produce data', next: ['consume'], reads: [], writes: ['result'] },
+    { id: 'consume', action: 'Consume data', next: [], reads: ['result'], writes: [] },
+  ];
+  contract.technical.data_objects = [
+    { id: 'result', kind: 'dataset', identity: 'result_id', produced_by: 'produce', owner: 'Service', source_of_truth: 'results' },
+  ];
+  await writeFile(contractPath, JSON.stringify(contract));
+
+  const unbound = run(['contract', 'validate', contractPath, '--json']);
+  assert.equal(unbound.status, 1);
+  assert.match(JSON.stringify(JSON.parse(unbound.stdout).errors), /missing-data-binding/);
+
+  contract.technical.data_bindings = [{
+    from_step: 'produce',
+    to_step: 'consume',
+    data_object: 'result',
+    binding: 'select-compatible',
+    request_fields: ['source_result_id'],
+  }];
+  await writeFile(contractPath, JSON.stringify(contract));
+  const incompleteSelection = run(['contract', 'validate', contractPath, '--json']);
+  assert.equal(incompleteSelection.status, 1);
+  const selectionCodes = JSON.parse(incompleteSelection.stdout).errors.map((error) => error.code);
+  for (const code of ['uninspectable-selection', 'missing-selection-query', 'missing-compatibility', 'missing-empty-behavior']) assert.ok(selectionCodes.includes(code), code);
+
+  contract.technical.data_objects[0].user_projection = 'Summary that distinguishes results';
+  contract.technical.data_bindings[0] = {
+    from_step: 'produce',
+    to_step: 'consume',
+    data_object: 'result',
+    binding: 'inherit-current',
+    request_fields: ['source_result_id'],
+  };
+  await writeFile(contractPath, JSON.stringify(contract));
+  const incompleteInheritance = run(['contract', 'validate', contractPath, '--json']);
+  assert.equal(incompleteInheritance.status, 1);
+  const inheritanceCodes = JSON.parse(incompleteInheritance.stdout).errors.map((error) => error.code);
+  assert.ok(inheritanceCodes.includes('missing-provenance'));
+  assert.ok(inheritanceCodes.includes('missing-correction'));
+});
+
 test('validate accepts the bundled skill', () => {
   const result = run(['validate', root, '--json']);
   assert.equal(result.status, 0, result.stderr);

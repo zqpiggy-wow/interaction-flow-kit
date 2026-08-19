@@ -6,6 +6,7 @@ Use this to review a PRD, technical design, plan, prototype, or implementation. 
 
 1. Identify the trigger, stated request, underlying job, downstream use, and observable completion.
 2. Trace the current path through relevant entry surfaces, inputs, UI state, domain state, APIs/jobs, persistence, recovery, result surfaces, and the next action performed with the result.
+   When durable data crosses stages, read [data-lineage.md](data-lineage.md) and trace the exact identity and fields rather than assuming that shared configuration means shared results.
 3. Test the smallest set of realistic scenarios that can expose usability or consistency failures.
 4. Report only material findings, highest impact first.
 
@@ -22,6 +23,7 @@ Prioritize whether the feature is easy to use end to end:
 - **Recover:** Are valid inputs and completed work preserved? Are correction, retry, cancel, undo, or repair available only when meaningful?
 - **Continue:** Can durable work be found after navigation, refresh, reconnect, or notification without duplicate submission?
 - **Use the outcome:** Is operation success being mistaken for job completion? Does the changed state or result work in the intended next context and relevant later lifecycle?
+- **Bind the outcome:** If a later stage depends on this result, can the user see which exact result is inherited or select a compatible one? Is independent operation explicit rather than an accidental fallback?
 - **Access:** Do keyboard, focus, labels, announcements, readable status, and non-color cues follow project conventions?
 
 Then check the system invariants required to deliver that usability:
@@ -40,6 +42,7 @@ For a PRD or technical design, also check whether:
 - current repository behavior, proposals, assumptions, and open decisions are distinguishable;
 - architecture choices fit existing boundaries or justify the migration cost of changing them;
 - data/state ownership, interface/event contracts, and failure semantics have one implementable interpretation;
+- produced durable objects have a stable identity, authoritative store, useful projection or intentional internal purpose, and a defined consumer; cross-stage reads name request/response fields, binding mode, compatibility, provenance, and staleness;
 - alternatives and trade-offs explain consequential choices without creating ceremonial option lists;
 - compatibility, data migration, staged delivery, rollback, security/privacy, and observability are addressed in proportion to risk;
 - the plan can ship in coherent vertical slices and tests prove both the user outcome and the riskiest technical assumption.

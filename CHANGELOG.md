@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- Add cross-stage data lineage guidance for operation/result identity, authoritative storage, boundary fields, user projections, downstream binding, compatibility, provenance, and staleness.
+- Extend Flow Contract validation and rendering with optional data objects, step reads/writes, and explicit inherit/select/optional/independent bindings.
+- Add behavioral coverage for replay-result display and compatible downstream dataset selection.
+
 All notable changes to Interaction Flow Kit are recorded here.
 
 ## [0.1.0] - 2026-08-19

@@ -16,6 +16,7 @@ Without flow guidance, an Agent can implement a working API or component that us
 - how validation, interruption, failure, cancellation, and partial results behave;
 - what usable outcome proves the user's job is complete.
 - how the changed state or result participates in the rest of the job, so operation success is not mistaken for completion.
+- how durable data crosses stages: operation versus result identity, authoritative entity/table, boundary fields, result projection, downstream selection or inheritance, compatibility, provenance, and staleness.
 
 The skill treats a named feature as a proposed means, then reconstructs its trigger, desired change, changed state, continuation, and completion evidence. A counterfactual check catches shallow solutions: if the named capability worked perfectly but the user could still not finish the likely job, the design boundary is incomplete. This applies equally to creation, search, AI generation, configuration, automation, sharing, and removal; it does not prescribe adjacent features by rote.
 
@@ -107,6 +108,8 @@ ifk contract render flow-contract.json > flow-design.md
 
 Validation checks intent, completion, flow-step identities, graph references, recovery semantics, ownership, interfaces, data flows, invariants, and verification. Rendering deterministically produces a compact intent contract, Mermaid flow, and applicable technical tables. The JSON contract has no user-managed version lifecycle.
 
+For durable cross-stage work, the optional contract fields `data_objects`, step `reads`/`writes`, and `data_bindings` make lineage machine-checkable. A binding must be explicit: `inherit-current`, `select-compatible`, `optional`, or `independent`. The validator catches unknown producers/consumers, unbound cross-stage reads, unusable produced results, selection without a query/compatibility/empty-state contract, and inheritance without visible provenance or a correction path.
+
 ## CLI
 
 ```text
@@ -142,6 +145,7 @@ agents/openai.yaml             Codex UI metadata and default prompt
 references/agent-workflow.md   Plan/spec/coding integration
 references/intent-and-closure.md Intent inference and downstream outcome closure
 references/technical-design.md PRD and technical-design workflow
+references/data-lineage.md    Cross-stage data identity, storage, API, binding, and staleness
 references/review.md           Evidence-backed flow review
 references/artifacts.md        Optional diagrams and tables
 schemas/flow-contract.schema.json Machine-readable contract shape

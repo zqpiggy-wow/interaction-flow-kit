@@ -47,6 +47,8 @@ Do not invent low-level details that repository evidence cannot support. Label c
 
 Read [references/agent-workflow.md](references/agent-workflow.md) when planning or implementing a non-trivial feature. Read [references/review.md](references/review.md) when reviewing an existing flow or design. Read [references/artifacts.md](references/artifacts.md) only when a diagram or structured table materially clarifies the work or the user requests one.
 
+When durable data crosses steps, stages, sessions, actors, or services, read [references/data-lineage.md](references/data-lineage.md). Distinguish the operation/task identity from the produced result or dataset identity. Resolve the producer, source of truth, user-visible projection, downstream consumer, boundary fields, binding mode, compatibility, provenance, and staleness behavior. A multi-stage design is not implementation-ready while any stage must invent which upstream result it consumes, how it selects or inherits it, or which fields cross the boundary. Do not create a lineage artifact for flows without a meaningful durable handoff.
+
 ## Executable tools
 
 Use the bundled tools when deterministic evidence or a machine-checkable handoff improves the task. They are optional for simple work:
@@ -78,6 +80,7 @@ Ask the user only when an unresolved decision materially changes product behavio
 - Trace each important product promise and downstream outcome to a system capability, owner, and verification method.
 - Prefer the smallest design that fits existing architecture and preserves a clean evolution path; do not confuse novelty with quality.
 - Make sources of truth, data ownership, state transitions, boundary contracts, and failure behavior explicit where ambiguity would make implementations diverge.
+- For cross-stage durable data, make each meaningful node's reads/writes and each handoff's identity, storage/entity, API fields, user projection, consumer, binding, compatibility, provenance, and invalidation behavior explicit.
 - Treat compatibility, migration, rollout, rollback, observability, security/privacy, concurrency, and idempotency as design inputs when applicable—not cleanup after coding.
 - Separate requirements from proposed implementation. A PRD may constrain observable behavior without prematurely freezing replaceable internals.
 - Record trade-offs and rejected options only when they explain a consequential decision.

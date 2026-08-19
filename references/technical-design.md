@@ -76,6 +76,8 @@ Include only applicable sections, but resolve any item whose ambiguity could cau
 
 Do not enumerate fields already defined by an authoritative schema unless the proposal changes them. Focus on new semantics and invariants.
 
+When durable output crosses stages, read [data-lineage.md](data-lineage.md) and distinguish operation, result/dataset, configuration, and provenance identities. For each meaningful producer/consumer, resolve reads, writes, authoritative entity/table/store, user-visible projection, and lifecycle. For each handoff, resolve the binding mode, exact boundary fields, compatible-result query or inheritance rule, source correction, permission/version/freshness checks, and stale propagation. Shared settings do not prove that one stage consumes another stage's output.
+
 #### Interfaces, events, and state
 
 - semantic request/response, command/event, or callback contracts;
@@ -145,6 +147,7 @@ Before calling a PRD implementation-ready, verify:
 
 - each critical user outcome maps to implementable system behavior;
 - each changed state or result supports the intended continuation and applicable lifecycle, or has an explicit handoff boundary;
+- every claimed cross-stage dependency identifies the exact produced object and uses an implementable inherit, select, optional, or independent contract;
 - repository evidence and proposals are distinguishable;
 - important state/data ownership and boundary contracts have one interpretation;
 - credible failure, compatibility, migration, and rollback behavior is resolved;

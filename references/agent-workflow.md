@@ -9,6 +9,7 @@ Use this when an agent is writing a plan/spec or implementing a feature with mea
 | Local synchronous action | Confirm entry, feedback, success, and likely error behavior inline |
 | Form or multi-step task | Resolve required-now inputs, validation, preservation, and completion path |
 | Background or durable work | Resolve authoritative status, stable identity, re-entry, interruption, retry/cancel semantics, and result discovery |
+| Cross-stage durable data | Resolve operation versus result identity, reads/writes, storage, boundary fields, result projection, downstream binding, compatibility, provenance, and staleness |
 | Cross-system, approval, or destructive flow | Resolve ownership, confirmation, timeout, idempotency, auditability, and compensation before coding |
 
 Do not expand a simple feature into a workflow platform. Do not compress a durable asynchronous task into a button plus spinner.
@@ -66,6 +67,12 @@ Use domain states already supported by the system. Add or split state only when 
 
 If progress cannot be measured, show phase or liveness rather than invented percentages. For asynchronous work distinguish a cancellation request from confirmed cancellation when that difference affects behavior.
 
+### Close cross-stage data handoffs
+
+When one node produces durable data that another node is expected to use, read [data-lineage.md](data-lineage.md). Do not stop at shared configuration or a completed task status. Name the produced result/dataset, its stable identity and source of truth, what the user can inspect, and which request/response/event fields bind it downstream. Choose one explicit relationship: inherit current, select compatible, optional, or independent. For selection, define compatible-result discovery and empty behavior; for inheritance, show provenance and a correction path. Persist the selected source and define compatibility and stale propagation.
+
+If the later node has no data dependency, do not imply a sequential pipeline merely because the screens are numbered.
+
 ## Turn decisions into implementation steps
 
 Plan vertical behavior, not isolated layers. Each step names a user-visible completion condition. For example:
@@ -75,6 +82,7 @@ Plan vertical behavior, not isolated layers. Each step names a user-visible comp
 3. Render understandable status and safe actions from server state; restore them on refresh.
 4. Close success and partial/failure paths with result, retry, and error-detail actions.
 5. Connect the changed state or result to the continuation that completes the intended user outcome.
+6. For a cross-stage result, prove that the downstream execution records the exact source identity and that the user can inspect or correct that binding.
 
 Adapt this shape to the repository. Avoid layer-only tasks that leave behavior unspecified between backend and frontend. Mark unsupported interactions as product or architecture decisions instead of faking them in the client.
 

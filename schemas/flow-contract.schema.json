@@ -64,6 +64,14 @@
           "type": "array",
           "items": { "$ref": "#/$defs/dataFlow" }
         },
+        "data_objects": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/dataObject" }
+        },
+        "data_bindings": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/dataBinding" }
+        },
         "invariants": {
           "type": "array",
           "items": { "type": "string", "minLength": 1 },
@@ -89,6 +97,16 @@
         "system_effect": { "type": "string", "minLength": 1 },
         "feedback": { "type": "string", "minLength": 1 },
         "next": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "uniqueItems": true
+        },
+        "reads": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "uniqueItems": true
+        },
+        "writes": {
           "type": "array",
           "items": { "type": "string", "minLength": 1 },
           "uniqueItems": true
@@ -137,6 +155,60 @@
         "purpose": { "type": "string", "minLength": 1 },
         "validation": { "type": "string", "minLength": 1 },
         "failure": { "type": "string", "minLength": 1 }
+      }
+    },
+    "dataObject": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "kind", "identity", "owner", "source_of_truth"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^[A-Za-z][A-Za-z0-9_-]*$" },
+        "kind": {
+          "type": "string",
+          "enum": ["operation", "result", "dataset", "record", "configuration", "artifact"]
+        },
+        "identity": { "type": "string", "minLength": 1 },
+        "produced_by": { "type": "string", "minLength": 1 },
+        "external_source": { "type": "string", "minLength": 1 },
+        "owner": { "type": "string", "minLength": 1 },
+        "source_of_truth": { "type": "string", "minLength": 1 },
+        "user_projection": { "type": "string", "minLength": 1 },
+        "internal_purpose": { "type": "string", "minLength": 1 },
+        "lifecycle": { "type": "string", "minLength": 1 }
+      }
+    },
+    "dataBinding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["from_step", "to_step", "binding"],
+      "properties": {
+        "from_step": { "type": "string", "minLength": 1 },
+        "to_step": { "type": "string", "minLength": 1 },
+        "data_object": { "type": "string", "minLength": 1 },
+        "binding": {
+          "type": "string",
+          "enum": ["inherit-current", "select-compatible", "optional", "independent"]
+        },
+        "request_fields": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "uniqueItems": true
+        },
+        "response_fields": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "uniqueItems": true
+        },
+        "selection_query": { "type": "string", "minLength": 1 },
+        "compatibility": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "uniqueItems": true
+        },
+        "provenance": { "type": "string", "minLength": 1 },
+        "correction": { "type": "string", "minLength": 1 },
+        "staleness": { "type": "string", "minLength": 1 },
+        "empty_behavior": { "type": "string", "minLength": 1 }
       }
     }
   }

@@ -9,6 +9,7 @@ Use an artifact only when prose is harder to implement or verify. Do not emit on
 - **Sequence diagram:** asynchronous ownership or cross-system ordering is the main risk.
 - **Information table:** the core problem is what to ask, infer, default, or defer.
 - **Data-flow table:** payload ownership, validation, retention, or boundary failure matters.
+- **Stage lineage table:** durable results cross stages and the main ambiguity is identity, storage, API fields, user projection, or downstream binding.
 - **Component/ownership map:** responsibilities or sources of truth cross multiple modules/services.
 - **Decision record:** alternatives have consequential trade-offs worth preserving.
 - **Rollout table:** mixed versions, migration order, flags, or rollback conditions are the main risk.
@@ -49,6 +50,14 @@ Include only states with a distinct product consequence.
 | Payload | From -> to | Trigger/purpose | Validation/source of truth | Persistence/retention | Failure/compensation | User-visible effect |
 |---|---|---|---|---|---|---|
 |  |  |  |  |  |  |  |
+
+## Stage lineage table
+
+Use this only for a real durable handoff. Read [data-lineage.md](data-lineage.md) before filling it.
+
+| Stage/node | Reads | Writes | Source of truth/table | Boundary fields | User sees | Next consumer | Binding/validity |
+|---|---|---|---|---|---|---|---|
+|  |  |  |  |  |  |  |  |
 
 ## Sequence diagram
 
