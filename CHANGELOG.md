@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## [0.1.1] - 2026-08-19
 
 - Add cross-stage data lineage guidance for operation/result identity, authoritative storage, boundary fields, user projections, downstream binding, compatibility, provenance, and staleness.
 - Extend Flow Contract validation and rendering with optional data objects, step reads/writes, and explicit inherit/select/optional/independent bindings.

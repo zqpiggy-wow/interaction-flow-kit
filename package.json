@@ -1,6 +1,6 @@
 {
   "name": "interaction-flow-kit",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Agent skill and CLI for keeping product interaction flows usable during planning and coding",
   "type": "module",
   "bin": {
@@ -44,6 +44,7 @@
   },
   "license": "MIT",
   "publishConfig": {
-    "access": "public"
+    "access": "public",
+    "tag": "latest"
   }
 }

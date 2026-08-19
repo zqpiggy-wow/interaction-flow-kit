@@ -30,6 +30,14 @@ Requires Node.js 20 or newer. The package has no runtime dependencies.
 npx interaction-flow-kit install
 ```
 
+To explicitly resolve the npm `latest` dist-tag, use:
+
+```bash
+npx interaction-flow-kit@latest install
+```
+
+Normal installs without a version also resolve `latest`.
+
 The safe default installs to the current project's `.agents/skills/interaction-flow-kit`. When run from a nested directory, the CLI walks up to the nearest Git root. This portable target is understood by Agent Skills-compatible tools and is also read by OpenCode.
 
 Choose a dedicated Agent target and scope when needed:
