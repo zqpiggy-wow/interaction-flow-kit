@@ -1,0 +1,38 @@
+name: Bug report
+description: Report incorrect CLI, installer, validation, or packaged-skill behavior
+title: "[Bug]: "
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Run `ifk doctor` first for installation problems. Remove credentials and private repository content from all output.
+  - type: textarea
+    id: summary
+    attributes:
+      label: What happened?
+      description: Describe the observed behavior and what you expected instead.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Reproduction
+      description: Provide the smallest command sequence or skill invocation that reproduces the problem.
+      placeholder: |
+        1. Run ...
+        2. Invoke ...
+        3. Observe ...
+    validations:
+      required: true
+  - type: textarea
+    id: diagnostics
+    attributes:
+      label: Diagnostics
+      description: Paste relevant `ifk doctor --json` output, package version, Node version, OS, and Agent target.
+      render: shell
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional context
+      description: Add sanitized logs or other details that help explain the failure.

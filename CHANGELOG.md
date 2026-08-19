@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.1.2] - 2026-08-19
+
+- Sharpen the project positioning around complete user outcomes instead of isolated feature implementation.
+- Restructure the README for faster evaluation, clearer audience fit, and progressive technical detail.
+- Improve Agent discovery metadata and npm search terms without changing runtime behavior.
+
 ## [0.1.1] - 2026-08-19
 
 - Add cross-stage data lineage guidance for operation/result identity, authoritative storage, boundary fields, user projections, downstream binding, compatibility, provenance, and staleness.

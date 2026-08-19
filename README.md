@@ -1,46 +1,113 @@
 # Interaction Flow Kit
 
-An Agent skill for inferring the real job behind a feature request, then designing it from PRD through technical design and implementation so it is easy to discover, understand, complete, recover, use, operate, and evolve.
+> Stop shipping requested features that still leave the user unable to finish the job.
 
-It is deliberately not a diagram generator. The default artifact is a compact Flow Contract embedded into the work already being done. Diagrams and tables appear only when they remove real implementation ambiguity.
+[![npm](https://img.shields.io/npm/v/interaction-flow-kit?color=cb3837)](https://www.npmjs.com/package/interaction-flow-kit)
+[![CI](https://github.com/zqpiggy-wow/interaction-flow-kit/actions/workflows/ci.yml/badge.svg)](https://github.com/zqpiggy-wow/interaction-flow-kit/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-For PRDs and architecture-sensitive work, it adds a proportional Technical Design Contract: current-system evidence, chosen design and trade-offs, data/state ownership, interfaces and failure semantics, migration/rollout, observability, and verification. Product and technical design are produced together so the PRD does not promise behavior the implementation cannot deliver.
+Interaction Flow Kit is an Agent Skill and zero-dependency CLI that turns feature requests into complete user outcomes and implementation-ready behavior. It helps coding agents reason beyond the requested button, API, or job so the result is discoverable, understandable, recoverable, reusable, and honest about what the system can support.
 
-## What it changes
-
-Without flow guidance, an Agent can implement a working API or component that users cannot find, cannot understand while it runs, and cannot recover when it fails. Interaction Flow Kit keeps these decisions attached to the code:
-
-- where the task is discovered and where durable work is found again;
-- which inputs are known, safely inferred, required now, or deferrable;
-- what feedback and control the user needs at meaningful states;
-- how validation, interruption, failure, cancellation, and partial results behave;
-- what usable outcome proves the user's job is complete.
-- how the changed state or result participates in the rest of the job, so operation success is not mistaken for completion.
-- how durable data crosses stages: operation versus result identity, authoritative entity/table, boundary fields, result projection, downstream selection or inheritance, compatibility, provenance, and staleness.
-
-The skill treats a named feature as a proposed means, then reconstructs its trigger, desired change, changed state, continuation, and completion evidence. A counterfactual check catches shallow solutions: if the named capability worked perfectly but the user could still not finish the likely job, the design boundary is incomplete. This applies equally to creation, search, AI generation, configuration, automation, sharing, and removal; it does not prescribe adjacent features by rote.
-
-The skill scales its effort to risk. A local synchronous action may need one sentence in a plan. A long-running cross-system task may need durable state ownership, re-entry, idempotent retry, and a compact transition table.
+Use it with Codex, Claude Code, Trae, TraeCode CLI, OpenCode, or any tool that supports the Agent Skills format.
 
 ## Install
 
-Requires Node.js 20 or newer. The package has no runtime dependencies.
+Requires Node.js 20 or newer.
 
 ```bash
 npx interaction-flow-kit install
 ```
 
-To explicitly resolve the npm `latest` dist-tag, use:
+This installs the skill into the current Git project's `.agents/skills` directory. Start a new Agent session or turn so skill discovery refreshes, then invoke it explicitly when you want it:
 
-```bash
-npx interaction-flow-kit@latest install
+```text
+Use $interaction-flow-kit while planning and implementing this feature.
+Keep the Flow Contract concise and carry the decisions into code and tests.
 ```
 
-Normal installs without a version also resolve `latest`.
+The skill may also be selected automatically for matching product-flow work.
 
-The safe default installs to the current project's `.agents/skills/interaction-flow-kit`. When run from a nested directory, the CLI walks up to the nearest Git root. This portable target is understood by Agent Skills-compatible tools and is also read by OpenCode.
+## Why it exists
 
-Choose a dedicated Agent target and scope when needed:
+Coding agents are good at implementing the noun in a request. That is not always the same as completing the user's job.
+
+| Request | An isolated implementation can stop at | The user still needs |
+|---|---|---|
+| “Add retry” | A button that calls the operation again | Idempotency, preserved input, authoritative status, and a clear result |
+| “Export this data” | A working export endpoint | A discoverable entry, progress or completion feedback, download recovery, and result retention |
+| “Generate a report” | A background generation job | Re-entry, partial-result behavior, provenance, and a useful next action |
+| “Use this result in analysis” | A result ID passed somewhere downstream | Compatible selection, visible source binding, stale-data behavior, and a correction path |
+
+Interaction Flow Kit applies one counterfactual test throughout planning, implementation, and review:
+
+> If the requested capability worked exactly as described, could the user still fail to accomplish the likely job?
+
+If the answer is yes, the design boundary is incomplete. The skill finds the missing boundary without automatically expanding the feature into a larger product.
+
+## What changes
+
+The skill keeps a compact **Flow Contract** inside the PRD, specification, plan, or implementation work already being produced. It resolves only the decisions that matter for the change:
+
+- the real intent and the observable evidence that the job is complete;
+- the shortest understandable path from entry to outcome;
+- what is already known, what must be asked now, and what can wait;
+- meaningful feedback, control, interruption, validation, and recovery behavior;
+- where durable work can be found again and how authoritative state is reconciled;
+- how the changed state or result participates in the user's next step.
+
+For architecture-sensitive work, it adds a proportional **Technical Design Contract** covering current-system evidence, ownership and sources of truth, interfaces and failure semantics, migration, rollout and rollback, observability, tests, and unresolved risk.
+
+For cross-stage data, it makes the handoff explicit: operation identity versus result identity, authoritative storage, boundary fields, downstream binding, compatibility, provenance, and staleness. This prevents one stage from silently inventing which upstream result it consumes.
+
+## When to use it
+
+Interaction Flow Kit is designed for people using coding agents to build or review user-facing product behavior. It is especially useful for:
+
+- PRDs, feature specs, and implementation plans;
+- long-running or asynchronous work;
+- workflows that cross screens, services, sessions, or actors;
+- generation, import/export, approval, automation, and data-pipeline features;
+- changes with meaningful failure, cancellation, retry, or partial results;
+- reviews where the implementation works locally but the end-to-end job may not.
+
+It is intentionally lightweight for small changes. A synchronous local action may need one sentence, not a diagram or a standalone artifact. It is not a UI component library, a diagram generator, or a replacement for product judgment.
+
+## How the Agent works
+
+1. **Inspect before inventing.** Find the current entry surfaces, state, APIs, jobs, persistence, permissions, and tests relevant to the request.
+2. **Infer the job.** Treat the requested capability as a proposed means, then trace the trigger, desired change, result, continuation, and completion evidence.
+3. **Resolve the contract.** Make important interaction and technical decisions explicit at a level proportional to risk.
+4. **Implement vertical slices.** Connect a real entry through authoritative behavior to an observable outcome.
+5. **Verify the journey.** Test the main path and plausible interruption or failure paths, including whether the result remains discoverable and actionable.
+
+The detailed instructions live in [SKILL.md](SKILL.md). Deeper guidance is loaded progressively only when the task needs it.
+
+## Optional evidence and contract tools
+
+The skill works without generating files. For complex work, the bundled CLI provides deterministic evidence and a machine-checkable handoff.
+
+Inspect a repository for relevant implementation evidence:
+
+```bash
+ifk inspect --root . --query "approval workflow"
+ifk inspect --root . --query "approval workflow" --json
+```
+
+The scanner returns bounded candidates with file and line attribution across entry surfaces, state and data, interfaces, background work, permissions, observability, and tests. Matches are evidence candidates, not architectural conclusions.
+
+Create and validate a contract when a durable or cross-boundary flow is too ambiguous for concise prose:
+
+```bash
+ifk contract init "Approval workflow" > flow-contract.json
+ifk contract validate flow-contract.json
+ifk contract render flow-contract.json > flow-design.md
+```
+
+Validation checks intent, completion, flow graph references, recovery semantics, ownership, interfaces, data lineage, invariants, and verification. Rendering produces reviewable Markdown, Mermaid, and applicable technical tables. These tools are optional; a valid schema is never treated as proof that the product design is correct.
+
+## Installation targets
+
+The default is a safe, project-local Agent Skills installation. Global installation is always explicit.
 
 ```bash
 npx interaction-flow-kit install --scope global
@@ -48,10 +115,6 @@ npx interaction-flow-kit install --target claude --scope project
 npx interaction-flow-kit install --target codex,claude,trae,opencode --scope global
 npx interaction-flow-kit install --target all --scope project
 ```
-
-`project` is the default scope; `global` is always explicit. Start a new Agent session or turn after installation so discovery refreshes.
-
-### Supported targets
 
 | Target | Project scope | Global scope |
 |---|---|---|
@@ -62,122 +125,69 @@ npx interaction-flow-kit install --target all --scope project
 | `trae-cli` | `<project>/.traecli/skills` | `~/.traecli/skills` |
 | `opencode` | `<project>/.opencode/skills` | `$XDG_CONFIG_HOME/opencode/skills` or `~/.config/opencode/skills` |
 
-Trae IDE and TraeCode CLI use different directories, so they are separate targets. OpenCode additionally reads `.agents/skills` and `.claude/skills`; use the dedicated `opencode` target only when you want its native directory.
+Trae IDE and TraeCode CLI use different directories. OpenCode also reads `.agents/skills` and `.claude/skills`; use its dedicated target only when you want the native directory. Multiple targets that resolve to the same directory are deduplicated.
 
-Multiple targets that resolve to one directory are deduplicated. For example, `agents,codex` at project scope writes one `.agents/skills` installation. Use `--project-root <dir>` to override Git-root discovery. Advanced users may use `--dest <skills-directory>` for one custom location; it cannot be combined with `--target` or `--scope`.
-
-### Install from a checkout
-
-```bash
-cd interaction-flow-kit
-npm install
-npm run check
-npm link
-interaction-flow-kit install
-```
-
-## Use
-
-The skill is automatically discoverable for matching product-flow work, or invoke it explicitly:
-
-```text
-Use $interaction-flow-kit while planning and implementing this feature.
-Keep the Flow Contract concise and put usability decisions directly into the implementation plan.
-```
-
-Ready-made entry prompts are available from the CLI:
-
-```bash
-interaction-flow-kit prompt plan
-interaction-flow-kit prompt spec
-interaction-flow-kit prompt prd
-interaction-flow-kit prompt design
-interaction-flow-kit prompt review
-```
-
-### Evidence and contract tools
-
-For architecture-sensitive work, scan the repository for concrete interaction and system evidence:
-
-```bash
-ifk inspect --root . --query "approval workflow"
-ifk inspect --root . --query "approval workflow" --json
-```
-
-The scanner returns bounded candidates with files, line numbers, and match signals across entry surfaces, state/data, interfaces, background work, permissions, observability, and tests. It does not claim that a match is the correct architecture.
-
-For a complex or cross-boundary flow, use a machine-checkable contract only when it reduces ambiguity:
-
-```bash
-ifk contract init "Approval workflow" > flow-contract.json
-ifk contract validate flow-contract.json
-ifk contract render flow-contract.json > flow-design.md
-```
-
-Validation checks intent, completion, flow-step identities, graph references, recovery semantics, ownership, interfaces, data flows, invariants, and verification. Rendering deterministically produces a compact intent contract, Mermaid flow, and applicable technical tables. The JSON contract has no user-managed version lifecycle.
-
-For durable cross-stage work, the optional contract fields `data_objects`, step `reads`/`writes`, and `data_bindings` make lineage machine-checkable. A binding must be explicit: `inherit-current`, `select-compatible`, `optional`, or `independent`. The validator catches unknown producers/consumers, unbound cross-stage reads, unusable produced results, selection without a query/compatibility/empty-state contract, and inheritance without visible provenance or a correction path.
+Use `--project-root <dir>` to override Git-root discovery. Advanced users can use `--dest <skills-directory>` for one custom location; it cannot be combined with `--target` or `--scope`.
 
 ## CLI
 
+`interaction-flow-kit` and the shorter `ifk` command are equivalent.
+
 ```text
-interaction-flow-kit inspect              Inspect repository evidence for a feature
-interaction-flow-kit contract init        Create an editable flow contract
-interaction-flow-kit contract validate    Validate semantics and graph references
-interaction-flow-kit contract render      Render Markdown, Mermaid, and technical tables
-interaction-flow-kit install              Install for selected Agents and scope
-interaction-flow-kit upgrade              Sync selected installations to this CLI version
-interaction-flow-kit status               Show selected installation/content status
-interaction-flow-kit doctor               Diagnose selected destinations/installations
-interaction-flow-kit validate [path]      Validate a skill directory and its references
-interaction-flow-kit prompt [mode]        Print a plan, spec, or review prompt
-interaction-flow-kit uninstall            Remove selected managed installations
-interaction-flow-kit targets              Resolve and display target paths
+ifk inspect                   Inspect repository evidence for a feature
+ifk contract init             Create an editable flow contract
+ifk contract validate         Validate semantics and graph references
+ifk contract render           Render Markdown, Mermaid, and technical tables
+ifk install                   Install for selected Agents and scope
+ifk upgrade                   Sync managed installations to this CLI version
+ifk status                    Show installation and content status
+ifk doctor                    Diagnose selected installations
+ifk validate [path]           Validate a skill directory and its references
+ifk prompt [mode]             Print a plan, spec, PRD, design, or review prompt
+ifk targets                   Resolve target paths
+ifk uninstall                 Remove selected managed installations
 ```
 
-Use `ifk` as a short alias. `install`, `upgrade`, `status`, `doctor`, `targets`, and `uninstall` accept the same `--target` and `--scope` selectors. They support `--json` for Agents and CI.
+Ready-made entry prompts are available with `ifk prompt plan|spec|prd|design|review`. Lifecycle commands support `--json` for Agents and CI.
 
 ### Safe updates and removal
 
-- Re-running `install` is a no-op when content is already current.
-- Multi-target commands preflight every destination before writing, so a conflict does not leave a partial installation.
-- `upgrade` moves a previous copy to a timestamped backup before replacing it.
-- An unmanaged existing skill is never overwritten unless `--force` is explicit; it is still backed up first.
-- `uninstall` is recoverable by default: it moves the exact skill directory to a timestamped sibling. `--purge` permanently deletes it.
+- Re-running `install` is a no-op when content is current.
+- Multi-target commands preflight every destination before writing.
+- `upgrade` backs up the previous managed copy before replacing it.
+- An unmanaged skill is never overwritten unless `--force` is explicit, and it is still backed up first.
+- `uninstall` is recoverable by default; `--purge` is required for permanent deletion.
 
 ## Skill layout
 
 ```text
-SKILL.md                       Agent entrypoint and usability invariants
-agents/openai.yaml             Codex UI metadata and default prompt
-references/agent-workflow.md   Plan/spec/coding integration
-references/intent-and-closure.md Intent inference and downstream outcome closure
-references/technical-design.md PRD and technical-design workflow
-references/data-lineage.md    Cross-stage data identity, storage, API, binding, and staleness
-references/review.md           Evidence-backed flow review
-references/artifacts.md        Optional diagrams and tables
+SKILL.md                          Agent entrypoint and decision rules
+agents/openai.yaml                Codex UI metadata and invocation policy
+references/agent-workflow.md      Planning and implementation workflow
+references/intent-and-closure.md  Intent inference and outcome closure
+references/technical-design.md    PRD and technical-design workflow
+references/data-lineage.md        Durable cross-stage data handoffs
+references/review.md              Evidence-backed flow review
+references/artifacts.md           Optional diagrams and tables
 schemas/flow-contract.schema.json Machine-readable contract shape
-scripts/inspect-repository.mjs Repository evidence scanner
-scripts/flow-contract.mjs      Contract initializer, validator, and renderer
+scripts/inspect-repository.mjs    Repository evidence scanner
+scripts/flow-contract.mjs         Contract initializer, validator, and renderer
 ```
 
-The Agent reads references progressively. Ordinary work does not load every guide.
-
-## Development and release
+## Development
 
 ```bash
+npm install
 npm run check
 npm pack --dry-run
 ```
 
-Tags matching `v*` run validation and tests, then publish the npm package with provenance through the GitHub Actions release workflow. Publishing requires the repository's npm trusted publisher or an `NPM_TOKEN` secret to be configured. A workflow file does not mean this checkout has been published.
+The test suite covers the CLI lifecycle, safe installation behavior, repository inspection, contract validation and rendering, and cross-stage lineage rules on Node.js 20, 22, and 24.
 
-Release notes are maintained in [CHANGELOG.md](CHANGELOG.md). The release workflow also attaches the exact npm tarball to a GitHub Release so the published artifact can be inspected independently.
+Tags matching `v*` run validation and tests, publish the npm package with provenance, and attach the exact tarball to a GitHub Release. Release notes are maintained in [CHANGELOG.md](CHANGELOG.md).
 
-## Support
-
-Run `interaction-flow-kit doctor` first. See [SUPPORT.md](SUPPORT.md) for diagnostic output, compatibility boundaries, and what to include in an issue.
+Contributions are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) for the local workflow and the kinds of changes that are most useful. For installation problems, run `ifk doctor` first and see [SUPPORT.md](SUPPORT.md).
 
 ## License
 
-MIT
+[MIT](LICENSE)

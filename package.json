@@ -1,7 +1,7 @@
 {
   "name": "interaction-flow-kit",
-  "version": "0.1.1",
-  "description": "Agent skill and CLI for keeping product interaction flows usable during planning and coding",
+  "version": "0.1.2",
+  "description": "Agent skill and CLI that turns feature requests into complete user outcomes and implementation-ready flows",
   "type": "module",
   "bin": {
     "interaction-flow-kit": "bin/interaction-flow-kit.mjs",
@@ -16,6 +16,7 @@
     "SKILL.md",
     "README.md",
     "CHANGELOG.md",
+    "CONTRIBUTING.md",
     "SUPPORT.md",
     "LICENSE"
   ],
@@ -29,9 +30,14 @@
   },
   "keywords": [
     "agent-skill",
+    "ai-agent",
     "codex",
+    "claude-code",
     "interaction-design",
+    "product-management",
     "product-ux",
+    "prd",
+    "technical-design",
     "workflow"
   ],
   "repository": {

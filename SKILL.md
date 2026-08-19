@@ -1,11 +1,11 @@
 ---
 name: interaction-flow-kit
-description: Infer the real user job behind feature requests, then design or review usable product flows and implementation-ready technical behavior for PRDs, specs, plans, and code. Use when an agent must turn a requested capability into an end-to-end outcome, including downstream use, system boundaries, state/data ownership, failure semantics, rollout, and verification; keep artifacts proportional.
+description: Design or review user-facing product changes from the real job behind a request through a usable outcome and implementation contract. Use for PRDs, feature specs, implementation plans, architecture-sensitive product work, and flow reviews where entry, state ownership, recovery, downstream use, or verification may otherwise be missed.
 ---
 
 # Interaction Flow Kit
 
-Use this skill during product design as well as planning and coding. Optimize first for whether a user can discover, understand, complete, recover, and benefit from the feature, then make the technical design explicit enough to implement that behavior honestly. Prevent a PRD from promising behavior the system cannot support and prevent code from implementing an isolated capability with no usable entry, feedback, recovery, or result.
+Turn the requested capability into a complete, usable outcome rather than implementing the request noun in isolation. Optimize first for whether a user can discover, understand, complete, recover from, and benefit from the change. Then make the technical design explicit enough to implement that behavior honestly. Prevent PRDs from promising unsupported behavior and code from shipping a capability with no usable entry, feedback, recovery, or continuation.
 
 ## Default behavior
 

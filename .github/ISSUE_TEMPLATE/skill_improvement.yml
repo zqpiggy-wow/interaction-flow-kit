@@ -1,0 +1,33 @@
+name: Skill improvement
+description: Propose a focused improvement based on a real Agent outcome
+title: "[Skill]: "
+labels: [enhancement]
+body:
+  - type: textarea
+    id: request
+    attributes:
+      label: Original request
+      description: What realistic user request or product situation exposed the gap? Remove private details.
+    validations:
+      required: true
+  - type: textarea
+    id: current
+    attributes:
+      label: Current outcome
+      description: What did the Agent decide, omit, or overproduce with the current skill?
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Better outcome
+      description: Describe the smallest decision or behavior change that would improve the result.
+    validations:
+      required: true
+  - type: textarea
+    id: proportionality
+    attributes:
+      label: Scope and proportionality
+      description: When should this guidance apply, and when should it stay out of the way?
+    validations:
+      required: true

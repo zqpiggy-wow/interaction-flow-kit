@@ -1,7 +1,7 @@
 interface:
   display_name: "Interaction Flow Kit"
-  short_description: "Design usable flows and implementation-ready systems"
-  default_prompt: "Use $interaction-flow-kit to infer the real user job behind this request and design it from PRD through technical implementation, closing the path from result to next useful action and making any cross-stage data handoff explicit."
+  short_description: "Turn feature requests into complete user outcomes"
+  default_prompt: "Use $interaction-flow-kit to turn this feature request into a complete user outcome and an implementation-ready interaction contract."
 
 policy:
   allow_implicit_invocation: true

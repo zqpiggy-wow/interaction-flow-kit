@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Support guide
+    url: https://github.com/zqpiggy-wow/interaction-flow-kit/blob/main/SUPPORT.md
+    about: Check installation diagnostics and supported compatibility boundaries before filing an issue.
