@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.3] - 2026-08-20
+
+- Add explicit flow/module data boundaries and single-writer guidance for durable objects.
+- Reject cross-boundary writes, writes to external objects, and cyclic dependencies between data boundaries in Flow Contract validation.
+- Document higher-level orchestration as the owner of coordination state for genuine feedback processes.
+- Require one authoritative implementation path and state machine per capability; replacement deletes every superseded path and rejects compatibility adapters or legacy fallbacks.
+
 ## [0.1.2] - 2026-08-19
 
 - Sharpen the project positioning around complete user outcomes instead of isolated feature implementation.

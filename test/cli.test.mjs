@@ -30,6 +30,11 @@ test('inspect returns bounded repository evidence with attributed lines', async 
     "});",
   ].join('\n'));
   await writeFile(join(sandbox, 'src', 'notes.md'), 'export config product notes\n');
+  await writeFile(join(sandbox, 'src', 'legacy-export-worker.ts'), [
+    "if (featureFlag('legacy-export')) {",
+    "  await legacyExportWorker.retry();",
+    "}",
+  ].join('\n'));
 
   const result = run(['inspect', '--root', sandbox, '--query', 'export config', '--json', '--max-per-category', '2']);
   assert.equal(result.status, 0, result.stderr);
@@ -38,6 +43,10 @@ test('inspect returns bounded repository evidence with attributed lines', async 
   assert.ok(report.sections.find((section) => section.id === 'feature-context'));
   assert.ok(report.sections.find((section) => section.id === 'entry-surfaces'));
   assert.ok(report.sections.find((section) => section.id === 'background-work'));
+  assert.ok(report.sections.find((section) => section.id === 'implementation-paths'));
+  const implementationPaths = report.sections.find((section) => section.id === 'implementation-paths');
+  assert.ok(implementationPaths.matches.some((match) => match.file.endsWith('legacy-export-worker.ts')));
+  assert.ok(implementationPaths.matches.some((match) => match.lines.some((line) => line.text.includes('legacyExportWorker.retry'))));
   assert.ok(report.sections.flatMap((section) => section.matches).some((match) => match.lines.some((line) => line.line === 1)));
   assert.ok(report.sections.every((section) => section.matches.length <= 2));
 });
@@ -78,6 +87,7 @@ test('cross-stage replay contract distinguishes task identity from selectable re
   contract.flow.steps = [
     {
       id: 'replay',
+      data_boundary: 'replay_flow',
       actor: 'Analyst',
       action: 'Run historical replay',
       system_effect: 'Persist replay status and result data',
@@ -88,6 +98,7 @@ test('cross-stage replay contract distinguishes task identity from selectable re
     },
     {
       id: 'analyze',
+      data_boundary: 'analysis_flow',
       actor: 'Analyst',
       action: 'Analyze a compatible replay result',
       system_effect: 'Persist analysis with source provenance',
@@ -157,8 +168,8 @@ test('lineage validation rejects implicit or unusable cross-stage handoffs', asy
   const contractPath = join(sandbox, 'invalid-lineage.json');
   const contract = JSON.parse(run(['contract', 'init', 'Broken pipeline']).stdout);
   contract.flow.steps = [
-    { id: 'produce', action: 'Produce data', next: ['consume'], reads: [], writes: ['result'] },
-    { id: 'consume', action: 'Consume data', next: [], reads: ['result'], writes: [] },
+    { id: 'produce', data_boundary: 'producer_flow', action: 'Produce data', next: ['consume'], reads: [], writes: ['result'] },
+    { id: 'consume', data_boundary: 'consumer_flow', action: 'Consume data', next: [], reads: ['result'], writes: [] },
   ];
   contract.technical.data_objects = [
     { id: 'result', kind: 'dataset', identity: 'result_id', produced_by: 'produce', owner: 'Service', source_of_truth: 'results' },
@@ -196,6 +207,230 @@ test('lineage validation rejects implicit or unusable cross-stage handoffs', asy
   const inheritanceCodes = JSON.parse(incompleteInheritance.stdout).errors.map((error) => error.code);
   assert.ok(inheritanceCodes.includes('missing-provenance'));
   assert.ok(inheritanceCodes.includes('missing-correction'));
+});
+
+test('data boundaries reject missing ownership and cross-boundary writes', async () => {
+  const sandbox = await mkdtemp(join(tmpdir(), 'ifk-boundary-write-test-'));
+  const contractPath = join(sandbox, 'boundary-write.json');
+  const contract = JSON.parse(run(['contract', 'init', 'Boundary ownership']).stdout);
+  contract.flow.steps = [
+    { id: 'produce', data_boundary: 'catalog_flow', action: 'Produce catalog result', next: ['consume'], reads: [], writes: ['catalogResult'] },
+    { id: 'consume', action: 'Patch catalog result from pricing', next: [], reads: [], writes: ['catalogResult'] },
+  ];
+  contract.technical.data_objects = [{
+    id: 'catalogResult',
+    kind: 'dataset',
+    identity: 'catalog_result_id',
+    produced_by: 'produce',
+    owner: 'Catalog module',
+    source_of_truth: 'catalog_results',
+    user_projection: 'Catalog result summary',
+  }];
+  await writeFile(contractPath, JSON.stringify(contract));
+
+  const missingBoundary = run(['contract', 'validate', contractPath, '--json']);
+  assert.equal(missingBoundary.status, 1);
+  assert.ok(JSON.parse(missingBoundary.stdout).errors.some((error) => error.code === 'missing-data-boundary'));
+
+  contract.flow.steps[1].data_boundary = 'pricing_flow';
+  await writeFile(contractPath, JSON.stringify(contract));
+  const foreignWrite = run(['contract', 'validate', contractPath, '--json']);
+  assert.equal(foreignWrite.status, 1);
+  assert.ok(JSON.parse(foreignWrite.stdout).errors.some((error) => error.code === 'cross-boundary-write'));
+});
+
+test('data boundaries cannot write objects owned by external systems', async () => {
+  const sandbox = await mkdtemp(join(tmpdir(), 'ifk-external-write-test-'));
+  const contractPath = join(sandbox, 'external-write.json');
+  const contract = JSON.parse(run(['contract', 'init', 'External ownership']).stdout);
+  contract.flow.steps = [{
+    id: 'sync',
+    data_boundary: 'local_sync',
+    action: 'Update external customer state directly',
+    next: [],
+    reads: [],
+    writes: ['externalCustomer'],
+  }];
+  contract.technical.data_objects = [{
+    id: 'externalCustomer',
+    kind: 'record',
+    identity: 'external_customer_id',
+    external_source: 'CRM customer service',
+    owner: 'CRM',
+    source_of_truth: 'CRM customers API',
+    internal_purpose: 'Reference the external customer in the local flow',
+  }];
+  await writeFile(contractPath, JSON.stringify(contract));
+
+  const result = run(['contract', 'validate', contractPath, '--json']);
+  assert.equal(result.status, 1);
+  assert.ok(JSON.parse(result.stdout).errors.some((error) => error.code === 'external-data-write'));
+});
+
+test('data boundaries reject reciprocal module dependencies', async () => {
+  const sandbox = await mkdtemp(join(tmpdir(), 'ifk-boundary-cycle-test-'));
+  const contractPath = join(sandbox, 'boundary-cycle.json');
+  const contract = JSON.parse(run(['contract', 'init', 'Coupled modules']).stdout);
+  contract.flow.steps = [
+    { id: 'moduleA', data_boundary: 'module_a', action: 'Produce A result from B result', next: ['moduleB'], reads: ['resultB'], writes: ['resultA'] },
+    { id: 'moduleB', data_boundary: 'module_b', action: 'Produce B result from A result', next: [], reads: ['resultA'], writes: ['resultB'] },
+  ];
+  contract.technical.data_objects = [
+    { id: 'resultA', kind: 'dataset', identity: 'result_a_id', produced_by: 'moduleA', owner: 'Module A', source_of_truth: 'module_a_results', user_projection: 'A result summary' },
+    { id: 'resultB', kind: 'dataset', identity: 'result_b_id', produced_by: 'moduleB', owner: 'Module B', source_of_truth: 'module_b_results', user_projection: 'B result summary' },
+  ];
+  contract.technical.data_bindings = [
+    { from_step: 'moduleA', to_step: 'moduleB', data_object: 'resultA', binding: 'inherit-current', request_fields: ['source_result_a_id'], provenance: 'Record A result ID', correction: 'Choose another A result', staleness: 'Mark B stale when A changes' },
+    { from_step: 'moduleB', to_step: 'moduleA', data_object: 'resultB', binding: 'inherit-current', request_fields: ['source_result_b_id'], provenance: 'Record B result ID', correction: 'Choose another B result', staleness: 'Mark A stale when B changes' },
+  ];
+  await writeFile(contractPath, JSON.stringify(contract));
+
+  const result = run(['contract', 'validate', contractPath, '--json']);
+  assert.equal(result.status, 1);
+  const errors = JSON.parse(result.stdout).errors;
+  assert.ok(errors.some((error) => error.code === 'cyclic-data-dependency'));
+  assert.match(errors.find((error) => error.code === 'cyclic-data-dependency').message, /higher-level orchestration boundary/);
+});
+
+test('an orchestration boundary keeps participant data dependencies directed', async () => {
+  const sandbox = await mkdtemp(join(tmpdir(), 'ifk-orchestration-boundary-test-'));
+  const contractPath = join(sandbox, 'orchestration.json');
+  const contract = JSON.parse(run(['contract', 'init', 'Orchestrated modules']).stdout);
+  contract.flow.steps = [
+    { id: 'moduleA', data_boundary: 'module_a', action: 'Publish A result', next: ['moduleB'], reads: [], writes: ['resultA'] },
+    { id: 'moduleB', data_boundary: 'module_b', action: 'Publish B result', next: ['coordinate'], reads: [], writes: ['resultB'] },
+    { id: 'coordinate', data_boundary: 'orchestration_flow', action: 'Coordinate the next decision from published results', next: [], reads: ['resultA', 'resultB'], writes: ['coordinationState'] },
+  ];
+  contract.technical.data_objects = [
+    { id: 'resultA', kind: 'dataset', identity: 'result_a_id', produced_by: 'moduleA', owner: 'Module A', source_of_truth: 'module_a_results', user_projection: 'A result summary' },
+    { id: 'resultB', kind: 'dataset', identity: 'result_b_id', produced_by: 'moduleB', owner: 'Module B', source_of_truth: 'module_b_results', user_projection: 'B result summary' },
+    { id: 'coordinationState', kind: 'record', identity: 'coordination_id', produced_by: 'coordinate', owner: 'Orchestration flow', source_of_truth: 'coordination_runs', internal_purpose: 'Own sequencing, termination, retry, and recovery' },
+  ];
+  contract.technical.data_bindings = [
+    { from_step: 'moduleA', to_step: 'coordinate', data_object: 'resultA', binding: 'inherit-current', request_fields: ['source_result_a_id'], provenance: 'Record A result ID', correction: 'Restart coordination with another A result', staleness: 'Keep immutable provenance' },
+    { from_step: 'moduleB', to_step: 'coordinate', data_object: 'resultB', binding: 'inherit-current', request_fields: ['source_result_b_id'], provenance: 'Record B result ID', correction: 'Restart coordination with another B result', staleness: 'Keep immutable provenance' },
+  ];
+  contract.technical.invariants = ['Only orchestration_flow owns coordination state and termination.'];
+  await writeFile(contractPath, JSON.stringify(contract));
+
+  const valid = run(['contract', 'validate', contractPath, '--json']);
+  assert.equal(valid.status, 0, valid.stderr || valid.stdout);
+  assert.equal(JSON.parse(valid.stdout).valid, true);
+
+  const rendered = run(['contract', 'render', contractPath]);
+  assert.equal(rendered.status, 0, rendered.stderr);
+  assert.match(rendered.stdout, /Data boundary/);
+  assert.match(rendered.stdout, /orchestration_flow/);
+});
+
+test('implementation path replacement requires deletion of every superseded path', async () => {
+  const sandbox = await mkdtemp(join(tmpdir(), 'ifk-implementation-path-invalid-test-'));
+  const contractPath = join(sandbox, 'implementation-path.json');
+  const contract = JSON.parse(run(['contract', 'init', 'Replace report generation']).stdout);
+  contract.technical.implementation_path = {
+    capability: 'Report generation',
+    strategy: 'replace',
+    entries: ['Report page', 'POST /reports'],
+    converges_at: 'GenerateReport command',
+    state_machine: 'report_runs transitions',
+    state_owner: 'Report service',
+    side_effect_owner: 'Report worker',
+    inspected_paths: ['src/legacy-report-controller.ts'],
+    removed_paths: [],
+    negative_searches: ['legacy report statuses and worker names'],
+    authority_tests: ['All entries converge on GenerateReport'],
+    verification: ['Every entry creates the same report run'],
+  };
+  await writeFile(contractPath, JSON.stringify(contract));
+
+  const missingRemoval = run(['contract', 'validate', contractPath, '--json']);
+  assert.equal(missingRemoval.status, 1);
+  assert.ok(JSON.parse(missingRemoval.stdout).errors.some((error) => error.code === 'missing-removed-path'));
+
+  contract.technical.implementation_path.legacy_paths = [{ path: 'src/legacy-report-controller.ts', disposition: 'stateless-adapter' }];
+  await writeFile(contractPath, JSON.stringify(contract));
+  const adapterRejected = run(['contract', 'validate', contractPath, '--json']);
+  assert.equal(adapterRejected.status, 1);
+  assert.ok(JSON.parse(adapterRejected.stdout).errors.some((error) => error.code === 'unknown-key' && error.path.endsWith('.legacy_paths')));
+
+  delete contract.technical.implementation_path.legacy_paths;
+  contract.technical.implementation_path.removed_paths = ['src/old-report-worker.ts'];
+  await writeFile(contractPath, JSON.stringify(contract));
+  const uninspected = run(['contract', 'validate', contractPath, '--json']);
+  assert.equal(uninspected.status, 1);
+  assert.ok(JSON.parse(uninspected.stdout).errors.some((error) => error.code === 'uninspected-removed-path'));
+});
+
+test('implementation path renders one authoritative state and side-effect path', async () => {
+  const sandbox = await mkdtemp(join(tmpdir(), 'ifk-implementation-path-valid-test-'));
+  const contractPath = join(sandbox, 'implementation-path.json');
+  const contract = JSON.parse(run(['contract', 'init', 'Replace report generation']).stdout);
+  contract.technical.implementation_path = {
+    capability: 'Report generation',
+    strategy: 'replace',
+    entries: ['Report page', 'POST /reports', 'Scheduled trigger'],
+    converges_at: 'GenerateReport command',
+    state_machine: 'report_runs transitions',
+    state_owner: 'Report service',
+    side_effect_owner: 'Report worker under run_id idempotency',
+    inspected_paths: ['src/legacy-report-controller.ts', 'src/old-report-worker.ts', 'src/report-reducer.ts'],
+    removed_paths: ['src/legacy-report-controller.ts', 'src/old-report-worker.ts', 'src/report-reducer.ts'],
+    negative_searches: ['legacy report statuses', 'old worker names', 'direct artifact writes', 'legacy feature flags'],
+    authority_tests: ['All entries invoke GenerateReport', 'Retry reaches only Report worker', 'One run ID produces at most one artifact'],
+    verification: [
+      'All entries invoke GenerateReport',
+      'Only Report worker writes the artifact',
+      'Legacy statuses, worker names, and direct side-effect calls have no remaining matches',
+    ],
+  };
+  await writeFile(contractPath, JSON.stringify(contract));
+
+  const valid = run(['contract', 'validate', contractPath, '--json']);
+  assert.equal(valid.status, 0, valid.stderr || valid.stdout);
+  assert.equal(JSON.parse(valid.stdout).valid, true);
+
+  const rendered = run(['contract', 'render', contractPath]);
+  assert.equal(rendered.status, 0, rendered.stderr);
+  assert.match(rendered.stdout, /Authoritative implementation path/);
+  assert.match(rendered.stdout, /GenerateReport command/);
+  assert.match(rendered.stdout, /Report worker under run_id idempotency/);
+  assert.match(rendered.stdout, /Removed superseded paths/);
+  assert.match(rendered.stdout, /src\/legacy-report-controller.ts/);
+  assert.match(rendered.stdout, /Negative searches/);
+  assert.match(rendered.stdout, /Authority tests/);
+});
+
+test('implementation path supports evolving the one existing path in place', async () => {
+  const sandbox = await mkdtemp(join(tmpdir(), 'ifk-implementation-path-evolve-test-'));
+  const contractPath = join(sandbox, 'implementation-path.json');
+  const contract = JSON.parse(run(['contract', 'init', 'Evolve import validation']).stdout);
+  contract.technical.implementation_path = {
+    capability: 'Import validation',
+    strategy: 'evolve-in-place',
+    entries: ['Import page', 'POST /imports'],
+    converges_at: 'ValidateImport command',
+    state_machine: 'import_jobs transitions',
+    state_owner: 'Import service',
+    side_effect_owner: 'Import worker',
+    inspected_paths: ['src/import-route.ts', 'src/import-worker.ts', 'src/import-store.ts'],
+    removed_paths: [],
+    negative_searches: ['alternate import commands', 'duplicate import workers', 'direct import writes'],
+    authority_tests: ['Both entries invoke ValidateImport', 'Retry reaches only Import worker'],
+    verification: ['Existing import_jobs state remains authoritative'],
+  };
+  await writeFile(contractPath, JSON.stringify(contract));
+
+  contract.technical.implementation_path.removed_paths = ['src/import-worker.ts'];
+  await writeFile(contractPath, JSON.stringify(contract));
+  const conflictingStrategy = run(['contract', 'validate', contractPath, '--json']);
+  assert.equal(conflictingStrategy.status, 1);
+  assert.ok(JSON.parse(conflictingStrategy.stdout).errors.some((error) => error.code === 'strategy-conflict'));
+
+  contract.technical.implementation_path.removed_paths = [];
+  await writeFile(contractPath, JSON.stringify(contract));
+  const valid = run(['contract', 'validate', contractPath, '--json']);
+  assert.equal(valid.status, 0, valid.stderr || valid.stdout);
+  assert.equal(JSON.parse(valid.stdout).valid, true);
 });
 
 test('validate accepts the bundled skill', () => {

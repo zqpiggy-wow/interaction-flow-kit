@@ -9,6 +9,7 @@ import process from 'node:process';
 const ID_PATTERN = /^[A-Za-z][A-Za-z0-9_-]*$/;
 const DATA_KINDS = new Set(['operation', 'result', 'dataset', 'record', 'configuration', 'artifact']);
 const BINDING_MODES = new Set(['inherit-current', 'select-compatible', 'optional', 'independent']);
+const IMPLEMENTATION_STRATEGIES = new Set(['evolve-in-place', 'replace']);
 const isObject = (value) => value && typeof value === 'object' && !Array.isArray(value);
 const isText = (value) => typeof value === 'string' && value.trim().length > 0;
 
@@ -29,6 +30,7 @@ export function createContract(feature = 'Feature name') {
       steps: [
         {
           id: 'start',
+          data_boundary: 'primary_flow',
           actor: 'Primary user',
           action: 'Start the task',
           system_effect: 'Create or change authoritative state',
@@ -39,6 +41,7 @@ export function createContract(feature = 'Feature name') {
         },
         {
           id: 'complete',
+          data_boundary: 'primary_flow',
           actor: 'Primary user',
           action: 'Use the result',
           system_effect: 'Expose the changed state or result',
@@ -57,6 +60,7 @@ export function createContract(feature = 'Feature name') {
       data_flows: [],
       data_objects: [],
       data_bindings: [],
+      implementation_path: null,
       invariants: [],
       verification: [],
     },
@@ -90,6 +94,46 @@ function checkKeys(value, allowed, path, errors) {
   for (const key of Object.keys(value)) {
     if (!allowed.has(key)) addError(errors, path + '.' + key, 'unknown-key', 'Unknown property.');
   }
+}
+
+function stronglyConnectedBoundaries(graph) {
+  let nextIndex = 0;
+  const indexByNode = new Map();
+  const lowLink = new Map();
+  const stack = [];
+  const onStack = new Set();
+  const components = [];
+  const nodes = new Set([...graph.keys(), ...[...graph.values()].flatMap((targets) => [...targets])]);
+
+  function visit(node) {
+    indexByNode.set(node, nextIndex);
+    lowLink.set(node, nextIndex);
+    nextIndex += 1;
+    stack.push(node);
+    onStack.add(node);
+
+    for (const target of graph.get(node) || []) {
+      if (!indexByNode.has(target)) {
+        visit(target);
+        lowLink.set(node, Math.min(lowLink.get(node), lowLink.get(target)));
+      } else if (onStack.has(target)) {
+        lowLink.set(node, Math.min(lowLink.get(node), indexByNode.get(target)));
+      }
+    }
+
+    if (lowLink.get(node) !== indexByNode.get(node)) return;
+    const component = [];
+    while (stack.length) {
+      const member = stack.pop();
+      onStack.delete(member);
+      component.push(member);
+      if (member === node) break;
+    }
+    if (component.length > 1) components.push(component.sort());
+  }
+
+  for (const node of nodes) if (!indexByNode.has(node)) visit(node);
+  return components;
 }
 
 export function validateContract(contract) {
@@ -128,7 +172,7 @@ export function validateContract(contract) {
           addError(errors, path, 'type', 'Expected a step object.');
           return;
         }
-        checkKeys(step, new Set(['id', 'actor', 'action', 'system_effect', 'feedback', 'next', 'reads', 'writes']), path, errors);
+        checkKeys(step, new Set(['id', 'actor', 'action', 'system_effect', 'feedback', 'next', 'reads', 'writes', 'data_boundary']), path, errors);
         requireText(step.id, path + '.id', errors);
         requireText(step.action, path + '.action', errors);
         if (isText(step.id) && !ID_PATTERN.test(step.id)) addError(errors, path + '.id', 'id-format', 'Use letters, digits, _ or -, starting with a letter.');
@@ -137,6 +181,10 @@ export function validateContract(contract) {
         checkStringArray(step.next, path + '.next', errors);
         checkStringArray(step.reads, path + '.reads', errors);
         checkStringArray(step.writes, path + '.writes', errors);
+        if (isText(step.data_boundary) && !ID_PATTERN.test(step.data_boundary)) addError(errors, path + '.data_boundary', 'id-format', 'Use letters, digits, _ or -, starting with a letter.');
+        const hasReads = Array.isArray(step.reads) && step.reads.length > 0;
+        const hasWrites = Array.isArray(step.writes) && step.writes.length > 0;
+        if ((hasReads || hasWrites) && !isText(step.data_boundary)) addError(errors, path + '.data_boundary', 'missing-data-boundary', 'A step that reads or writes durable data must name its owning flow/module boundary.');
         if (!isText(step.feedback)) warnings.push({ path: path + '.feedback', code: 'missing-feedback', message: 'No user-visible feedback is specified.' });
       });
       contract.flow.steps.forEach((step, index) => {
@@ -180,7 +228,7 @@ export function validateContract(contract) {
   if (contract.technical !== undefined) {
     if (!isObject(contract.technical)) addError(errors, '$.technical', 'type', 'Expected a technical object.');
     else {
-      checkKeys(contract.technical, new Set(['owners', 'interfaces', 'data_flows', 'data_objects', 'data_bindings', 'invariants', 'verification']), '$.technical', errors);
+      checkKeys(contract.technical, new Set(['owners', 'interfaces', 'data_flows', 'data_objects', 'data_bindings', 'implementation_path', 'invariants', 'verification']), '$.technical', errors);
       const groups = [
         ['owners', ['concern', 'owner', 'source_of_truth']],
         ['interfaces', ['name', 'kind', 'contract']],
@@ -204,8 +252,35 @@ export function validateContract(contract) {
       checkStringArray(contract.technical.invariants, '$.technical.invariants', errors);
       checkStringArray(contract.technical.verification, '$.technical.verification', errors);
 
+      const implementationPath = contract.technical.implementation_path;
+      if (implementationPath !== undefined && implementationPath !== null) {
+        const path = '$.technical.implementation_path';
+        if (!isObject(implementationPath)) addError(errors, path, 'type', 'Expected an implementation path object.');
+        else {
+          checkKeys(implementationPath, new Set(['capability', 'strategy', 'entries', 'converges_at', 'state_machine', 'state_owner', 'side_effect_owner', 'inspected_paths', 'removed_paths', 'negative_searches', 'authority_tests', 'verification']), path, errors);
+          for (const field of ['capability', 'strategy', 'converges_at', 'state_machine', 'state_owner', 'side_effect_owner']) requireText(implementationPath[field], path + '.' + field, errors);
+          if (isText(implementationPath.strategy) && !IMPLEMENTATION_STRATEGIES.has(implementationPath.strategy)) addError(errors, path + '.strategy', 'enum', 'Choose evolve-in-place or replace.');
+          for (const field of ['entries', 'inspected_paths', 'negative_searches', 'authority_tests', 'verification']) {
+            checkStringArray(implementationPath[field], path + '.' + field, errors);
+            if (!Array.isArray(implementationPath[field]) || !implementationPath[field].length) addError(errors, path + '.' + field, 'min-items', 'Expected at least one item.');
+          }
+          const removedPaths = implementationPath.removed_paths;
+          checkStringArray(removedPaths, path + '.removed_paths', errors);
+          if (Array.isArray(removedPaths)) {
+            for (const removedPath of removedPaths) {
+              if (isText(removedPath) && Array.isArray(implementationPath.inspected_paths) && !implementationPath.inspected_paths.includes(removedPath)) {
+                addError(errors, path + '.removed_paths', 'uninspected-removed-path', 'Every removed path must also appear in inspected_paths: ' + removedPath + '.');
+              }
+            }
+          }
+          if (implementationPath.strategy === 'replace' && (!Array.isArray(removedPaths) || !removedPaths.length)) addError(errors, path + '.removed_paths', 'missing-removed-path', 'Replacement must name every superseded route, state machine, worker, trigger, flag, and test that is deleted. Compatibility adapters and legacy fallbacks are not allowed.');
+          if (implementationPath.strategy === 'evolve-in-place' && Array.isArray(removedPaths) && removedPaths.length) addError(errors, path + '.removed_paths', 'strategy-conflict', 'evolve-in-place keeps the authoritative path. Use replace when superseded execution paths are deleted.');
+        }
+      }
+
       const steps = Array.isArray(contract.flow && contract.flow.steps) ? contract.flow.steps : [];
       const stepIds = new Set(steps.filter(isObject).map((step) => step.id).filter(isText));
+      const stepById = new Map(steps.filter(isObject).filter((step) => isText(step.id)).map((step) => [step.id, step]));
       const dataObjects = contract.technical.data_objects;
       const objectIds = new Map();
       if (dataObjects !== undefined) {
@@ -234,12 +309,23 @@ export function validateContract(contract) {
           if (!Array.isArray(step[field])) continue;
           for (const objectId of step[field]) {
             if (isText(objectId) && !objectIds.has(objectId)) addError(errors, '$.flow.steps[' + stepIndex + '].' + field, 'unknown-data-object', 'Unknown data object: ' + objectId + '.');
+            if (field !== 'writes' || !isText(objectId) || !objectIds.has(objectId)) continue;
+            const dataObject = dataObjects[objectIds.get(objectId)];
+            if (isText(dataObject.external_source)) {
+              addError(errors, '$.flow.steps[' + stepIndex + '].writes', 'external-data-write', 'External data object ' + objectId + ' cannot be written by an internal flow. Use its owner contract or produce a local derived object.');
+              continue;
+            }
+            const producer = stepById.get(dataObject.produced_by);
+            if (producer && step.id !== producer.id && isText(step.data_boundary) && isText(producer.data_boundary) && step.data_boundary !== producer.data_boundary) {
+              addError(errors, '$.flow.steps[' + stepIndex + '].writes', 'cross-boundary-write', 'Boundary ' + step.data_boundary + ' cannot write ' + objectId + ', which is owned by boundary ' + producer.data_boundary + '. Consume it through a contract or ask the owner to change it.');
+            }
           }
         }
       }
 
       const bindings = contract.technical.data_bindings;
       const consumed = new Set();
+      const boundaryGraph = new Map();
       if (bindings !== undefined) {
         if (!Array.isArray(bindings)) addError(errors, '$.technical.data_bindings', 'type', 'Expected an array.');
         else bindings.forEach((item, index) => {
@@ -267,6 +353,12 @@ export function validateContract(contract) {
             if (dataObject.kind === 'operation' && !independent) warnings.push({ path: path + '.data_object', code: 'operation-as-result', message: 'This binding consumes an operation identity. Confirm that downstream needs execution metadata rather than a produced result or dataset.' });
             if (item.binding === 'select-compatible' && !isText(dataObject.user_projection)) addError(errors, path + '.data_object', 'uninspectable-selection', 'Selectable results need a user projection that distinguishes candidates.');
           }
+          const fromBoundary = stepById.get(item.from_step)?.data_boundary;
+          const toBoundary = stepById.get(item.to_step)?.data_boundary;
+          if (!independent && isText(fromBoundary) && isText(toBoundary) && fromBoundary !== toBoundary) {
+            if (!boundaryGraph.has(fromBoundary)) boundaryGraph.set(fromBoundary, new Set());
+            boundaryGraph.get(fromBoundary).add(toBoundary);
+          }
           if (!independent && (!Array.isArray(item.request_fields) || !item.request_fields.length)) addError(errors, path + '.request_fields', 'missing-request-fields', 'Specify the field or fields that carry the upstream identity or data.');
           if (item.binding === 'select-compatible') {
             if (!isText(item.selection_query)) addError(errors, path + '.selection_query', 'missing-selection-query', 'Selection requires a compatible-result query/filter contract.');
@@ -280,6 +372,10 @@ export function validateContract(contract) {
           if (!independent && !isText(item.provenance)) warnings.push({ path: path + '.provenance', code: 'missing-provenance', message: 'Persist or expose which exact upstream result was consumed.' });
           if (!independent && !isText(item.staleness)) warnings.push({ path: path + '.staleness', code: 'missing-staleness', message: 'Define what happens when the upstream result changes, expires, or is replaced.' });
         });
+      }
+
+      for (const component of stronglyConnectedBoundaries(boundaryGraph)) {
+        addError(errors, '$.technical.data_bindings', 'cyclic-data-dependency', 'Data boundaries form a dependency cycle: ' + component.join(' <-> ') + '. Choose one dependency direction or introduce a higher-level orchestration boundary that owns coordination state, termination, retry, and recovery.');
       }
 
       if (Array.isArray(dataObjects)) dataObjects.forEach((item, index) => {
@@ -348,8 +444,8 @@ export function renderContract(contract) {
   for (const step of contract.flow.steps) for (const next of step.next || []) lines.push('    ' + step.id + ' --> ' + next);
   const hasStepData = contract.flow.steps.some((step) => (step.reads && step.reads.length) || (step.writes && step.writes.length));
   if (hasStepData) {
-    lines.push('~~~', '', '| Step | Actor | Action | Reads | Writes | System effect | Feedback |', '|---|---|---|---|---|---|---|');
-    for (const step of contract.flow.steps) lines.push('| ' + cell(step.id) + ' | ' + cell(step.actor) + ' | ' + cell(step.action) + ' | ' + cell((step.reads || []).join(', ')) + ' | ' + cell((step.writes || []).join(', ')) + ' | ' + cell(step.system_effect) + ' | ' + cell(step.feedback) + ' |');
+    lines.push('~~~', '', '| Step | Data boundary | Actor | Action | Reads | Writes | System effect | Feedback |', '|---|---|---|---|---|---|---|---|');
+    for (const step of contract.flow.steps) lines.push('| ' + cell(step.id) + ' | ' + cell(step.data_boundary) + ' | ' + cell(step.actor) + ' | ' + cell(step.action) + ' | ' + cell((step.reads || []).join(', ')) + ' | ' + cell((step.writes || []).join(', ')) + ' | ' + cell(step.system_effect) + ' | ' + cell(step.feedback) + ' |');
   } else {
     lines.push('~~~', '', '| Step | Actor | Action | System effect | Feedback |', '|---|---|---|---|---|');
     for (const step of contract.flow.steps) lines.push('| ' + cell(step.id) + ' | ' + cell(step.actor) + ' | ' + cell(step.action) + ' | ' + cell(step.system_effect) + ' | ' + cell(step.feedback) + ' |');
@@ -378,6 +474,13 @@ export function renderContract(contract) {
   if (contract.technical && contract.technical.data_bindings && contract.technical.data_bindings.length) {
     lines.push('', '## Stage data lineage', '', '| From -> to | Data object | Binding | Request fields | Response fields | Selection/compatibility | Provenance/correction | Staleness/empty behavior |', '|---|---|---|---|---|---|---|---|');
     for (const item of contract.technical.data_bindings) lines.push('| ' + cell(item.from_step + ' -> ' + item.to_step) + ' | ' + cell(item.data_object || 'None') + ' | ' + cell(item.binding) + ' | ' + cell((item.request_fields || []).join(', ')) + ' | ' + cell((item.response_fields || []).join(', ')) + ' | ' + cell([item.selection_query, ...(item.compatibility || [])].filter(Boolean).join('; ')) + ' | ' + cell([item.provenance, item.correction].filter(Boolean).join('; ')) + ' | ' + cell([item.staleness, item.empty_behavior].filter(Boolean).join('; ')) + ' |');
+  }
+  if (contract.technical && contract.technical.implementation_path) {
+    const item = contract.technical.implementation_path;
+    lines.push('', '## Authoritative implementation path', '', '| Capability | Strategy | Entries | Converges at | State machine / owner | Side-effect owner |', '|---|---|---|---|---|---|');
+    lines.push('| ' + cell(item.capability) + ' | ' + cell(item.strategy) + ' | ' + cell((item.entries || []).join(', ')) + ' | ' + cell(item.converges_at) + ' | ' + cell([item.state_machine, item.state_owner].filter(Boolean).join(' / ')) + ' | ' + cell(item.side_effect_owner) + ' |');
+    if (item.removed_paths && item.removed_paths.length) lines.push('', '**Removed superseded paths:** ' + cell(item.removed_paths.join(', ')));
+    lines.push('', '**Inspected paths:** ' + cell((item.inspected_paths || []).join(', ')), '', '**Negative searches:** ' + cell((item.negative_searches || []).join('; ')), '', '**Authority tests:** ' + cell((item.authority_tests || []).join('; ')), '', '**Verification:** ' + cell((item.verification || []).join('; ')));
   }
   if (contract.technical && contract.technical.invariants && contract.technical.invariants.length) lines.push('', '## Invariants', '', ...contract.technical.invariants.map((item) => '- ' + item));
   if (contract.technical && contract.technical.verification && contract.technical.verification.length) lines.push('', '## Verification', '', ...contract.technical.verification.map((item) => '- ' + item));

@@ -6,6 +6,8 @@ Use this reference when durable data crosses steps, stages, services, sessions, 
 
 A multi-stage design is not implementation-ready while a stage must invent which upstream result it consumes, how that result is selected or inherited, which fields cross the boundary, or how the user verifies and changes the binding. Completion of an operation is not a usable outcome when its result cannot be inspected, identified, selected, or consumed.
 
+A design is also not implementation-ready when flows own or mutate each other's state. Assign each step that reads or writes durable data to a **data boundary**: the flow, module, or service that owns that step's state. Every durable object has one producing boundary and one source of truth. Other boundaries consume it through an explicit contract and may persist their own provenance or derived result, but they do not update or mirror the producer's internal status.
+
 Separate these concepts even when one API currently returns them together:
 
 - **Operation identity** identifies execution, status, retry, cancellation, logs, and audit history.
@@ -15,6 +17,18 @@ Separate these concepts even when one API currently returns them together:
 
 Do not pass an operation ID as if it were a dataset ID unless they intentionally identify the same domain resource; state that invariant explicitly.
 
+## Keep boundaries directed
+
+- **Single writer:** only the producing boundary writes an object. Corrections use the owner's command/API or create a new version; another flow never patches the owner's record or table.
+- **Contract instead of shared state:** a consumer reads a stable identity and published representation. It owns its own processing state, not a synchronized copy of upstream flags.
+- **Acyclic dependencies:** cross-boundary bindings form a directed acyclic graph. A may consume B or B may consume A; ordinary flows must not require both directions.
+- **Independent failure:** failures cross the boundary as contract outcomes. A consumer does not reconstruct the producer's state machine from callbacks, partially copied fields, or local guesses.
+- **Versioned evolution:** the producer owns compatibility rules for its published contract. Consumers do not reach into implementation-specific state to unblock themselves.
+
+Reciprocal dependencies are a design failure even when each individual object has one writer. They create coupled state machines: A waits on B, B derives status from A, retries touch both, and each incident adds another synchronization flag.
+
+If the domain genuinely contains a feedback loop, model it as a higher-level orchestration flow with its own data boundary. The orchestrator owns coordination state and specifies the trigger, sequence, termination or convergence condition, idempotency, timeout, retry, and recovery. Participant boundaries still expose inputs and outputs through one-way contracts; they do not drive each other by mutating reciprocal status.
+
 ## Resolve the node contract
 
 For each meaningful producer or consumer, resolve only the applicable items:
@@ -22,6 +36,7 @@ For each meaningful producer or consumer, resolve only the applicable items:
 | Concern | Decision to make |
 |---|---|
 | Reads and writes | Named domain objects read, created, or changed by this node |
+| Data boundary | The flow/module/service that owns the node's durable state |
 | Identity | Stable identifier for each operation, result, dataset, configuration, or record |
 | Authority | Owning component and table/entity/object store or external source of truth |
 | Boundary fields | Request, response, event, callback, or command fields that carry identity and required data |
@@ -76,3 +91,5 @@ Stage B writes dataset `evaluation_result`, identified by `result_id`; `evaluati
 ```
 
 Use the machine-checkable Flow Contract only when the number of nodes or boundaries makes prose easy to misread. Its optional `data_objects`, step `reads`/`writes`, and `data_bindings` render a lineage table and catch broken references or incomplete binding semantics.
+
+For machine-checkable contracts, add `data_boundary` to every step that has `reads` or `writes`. Validation rejects writes from a different boundary, attempts to write external objects, and cycles in the cross-boundary binding graph.

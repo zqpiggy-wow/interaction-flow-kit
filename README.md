@@ -57,7 +57,7 @@ The skill keeps a compact **Flow Contract** inside the PRD, specification, plan,
 
 For architecture-sensitive work, it adds a proportional **Technical Design Contract** covering current-system evidence, ownership and sources of truth, interfaces and failure semantics, migration, rollout and rollback, observability, tests, and unresolved risk.
 
-For cross-stage data, it makes the handoff explicit: operation identity versus result identity, authoritative storage, boundary fields, downstream binding, compatibility, provenance, and staleness. This prevents one stage from silently inventing which upstream result it consumes.
+For cross-stage data, it makes the handoff explicit: each flow's data boundary, single-writer ownership, operation identity versus result identity, authoritative storage, boundary fields, downstream binding, compatibility, provenance, and staleness. It rejects cross-boundary writes and reciprocal dependencies that turn two modules into one coupled state machine.
 
 ## When to use it
 
@@ -93,7 +93,7 @@ ifk inspect --root . --query "approval workflow"
 ifk inspect --root . --query "approval workflow" --json
 ```
 
-The scanner returns bounded candidates with file and line attribution across entry surfaces, state and data, interfaces, background work, permissions, observability, and tests. Matches are evidence candidates, not architectural conclusions.
+The scanner returns bounded candidates with file and line attribution across entry surfaces, state and data, implementation paths, interfaces, background work, permissions, observability, and tests. Implementation-path evidence highlights reducers/stores, legacy or fallback branches, workers/listeners, flags, and side-effect triggers that could leave two live state machines after a rewrite. Matches are evidence candidates, not architectural conclusions.
 
 Create and validate a contract when a durable or cross-boundary flow is too ambiguous for concise prose:
 
@@ -103,7 +103,9 @@ ifk contract validate flow-contract.json
 ifk contract render flow-contract.json > flow-design.md
 ```
 
-Validation checks intent, completion, flow graph references, recovery semantics, ownership, interfaces, data lineage, invariants, and verification. Rendering produces reviewable Markdown, Mermaid, and applicable technical tables. These tools are optional; a valid schema is never treated as proof that the product design is correct.
+Validation checks intent, completion, flow graph references, recovery semantics, ownership, interfaces, data lineage, flow data boundaries, cyclic dependencies, invariants, and verification. Rendering produces reviewable Markdown, Mermaid, and applicable technical tables. These tools are optional; a valid schema is never treated as proof that the product design is correct.
+
+For a non-trivial rewrite, the optional `technical.implementation_path` contract records the supported entries, convergence command/use case, authoritative state machine and side-effect owner, inspected paths, and every superseded path deleted by the replacement. Validation rejects adapter/fallback fields, requires replacement paths to name concrete removals, and checks that removed paths were inspected.
 
 ## Installation targets
 
@@ -167,6 +169,7 @@ references/agent-workflow.md      Planning and implementation workflow
 references/intent-and-closure.md  Intent inference and outcome closure
 references/technical-design.md    PRD and technical-design workflow
 references/data-lineage.md        Durable cross-stage data handoffs
+references/implementation-path.md Single authoritative path and legacy cleanup
 references/review.md              Evidence-backed flow review
 references/artifacts.md           Optional diagrams and tables
 schemas/flow-contract.schema.json Machine-readable contract shape

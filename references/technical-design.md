@@ -63,7 +63,10 @@ Include only applicable sections, but resolve any item whose ambiguity could cau
 
 - affected components/services and their responsibilities;
 - source of truth for each durable state and important datum;
+- data boundary and single writer for each durable object; consumers own only their bindings and derived state;
+- one authoritative execution path, state machine, state owner, and side-effect owner for each user capability; supported entries converge on it;
 - dependency direction and synchronous/asynchronous boundaries;
+- an acyclic cross-boundary dependency graph, or a higher-level orchestration boundary for genuine feedback processes;
 - which existing seams are reused and which new seam is justified.
 
 #### Data and lifecycle
@@ -106,11 +109,12 @@ Use examples or schemas when precision is needed, but avoid generating exhaustiv
 Specify the safe path from current to target behavior:
 
 - implementation slices that each preserve a coherent product state;
+- implementation strategy for each changed capability: evolve in place, or replace and delete every superseded route, adapter, state machine, worker/listener, side-effect trigger, flag, and test;
 - dependency and data migration order;
 - feature flag, shadow/dual-read/write, canary, or staged rollout when justified;
 - compatibility window for old clients/workers/data;
 - rollback trigger and what rollback can/cannot reverse;
-- cleanup of temporary paths and the condition for completing migration.
+- proof that superseded execution paths are absent; data/protocol migration must normalize into the one authoritative workflow rather than preserve another implementation.
 
 Do not prescribe elaborate deployment machinery for a low-risk local change. For irreversible data changes or external side effects, rollout and rollback semantics are required.
 
@@ -146,6 +150,9 @@ Avoid duplicating the same decision across sections. Link to an authoritative sc
 Before calling a PRD implementation-ready, verify:
 
 - each critical user outcome maps to implementable system behavior;
+- every durable object has one owning data boundary, with no cross-boundary writes or mirrored internal status;
+- every supported entry for a capability converges on one authoritative state machine and side-effect owner; no fallback implementation can continue processing independently;
+- data dependencies between boundaries are acyclic; any genuine feedback process is owned by a separate orchestration boundary with termination, idempotency, and recovery semantics;
 - each changed state or result supports the intended continuation and applicable lifecycle, or has an explicit handoff boundary;
 - every claimed cross-stage dependency identifies the exact produced object and uses an implementable inherit, select, optional, or independent contract;
 - repository evidence and proposals are distinguishable;

@@ -47,7 +47,11 @@ Do not invent low-level details that repository evidence cannot support. Label c
 
 Read [references/agent-workflow.md](references/agent-workflow.md) when planning or implementing a non-trivial feature. Read [references/review.md](references/review.md) when reviewing an existing flow or design. Read [references/artifacts.md](references/artifacts.md) only when a diagram or structured table materially clarifies the work or the user requests one.
 
+When changing an existing capability across files or turns, read [references/implementation-path.md](references/implementation-path.md). Reconstruct the current end-to-end execution path before patching and preserve exactly one authoritative state machine, state owner, and side-effect path. Multiple entry surfaces may exist only when they converge early on the same command/use case. Choose either evolve the existing path in place or replace it and delete every superseded route, adapter, state owner, worker, trigger, flag, and test. Do not preserve a compatibility execution path or legacy fallback. Proactively treat duplicate statuses, stores, side-effect call sites, and old/new tests as evidence of patch accumulation that requires architectural consolidation.
+
 When durable data crosses steps, stages, sessions, actors, or services, read [references/data-lineage.md](references/data-lineage.md). Distinguish the operation/task identity from the produced result or dataset identity. Resolve the producer, source of truth, user-visible projection, downstream consumer, boundary fields, binding mode, compatibility, provenance, and staleness behavior. A multi-stage design is not implementation-ready while any stage must invent which upstream result it consumes, how it selects or inherits it, or which fields cross the boundary. Do not create a lineage artifact for flows without a meaningful durable handoff.
+
+Give each flow or module an explicit data boundary. Every durable object has one owning boundary and one source of truth; another boundary may consume its published result through a contract but must not write, mirror, or derive the owner's internal status. Keep cross-boundary data dependencies acyclic. If the domain truly requires feedback, introduce a higher-level orchestration boundary that owns coordination state, termination, retry, and recovery so the participant boundaries remain independently understandable and testable.
 
 ## Executable tools
 
@@ -81,6 +85,8 @@ Ask the user only when an unresolved decision materially changes product behavio
 - Prefer the smallest design that fits existing architecture and preserves a clean evolution path; do not confuse novelty with quality.
 - Make sources of truth, data ownership, state transitions, boundary contracts, and failure behavior explicit where ambiguity would make implementations diverge.
 - For cross-stage durable data, make each meaningful node's reads/writes and each handoff's identity, storage/entity, API fields, user projection, consumer, binding, compatibility, provenance, and invalidation behavior explicit.
+- Enforce one writer per durable object and keep each flow's state inside its own data boundary. Reject shared mutable status, mirrored state machines, cross-boundary writes, and reciprocal data dependencies; a genuine feedback process belongs to an explicit orchestration boundary.
+- Preserve one authoritative implementation path per user capability. Do not leave parallel reducers, stores, jobs, handlers, adapters, retry loops, feature-flag branches, or side-effect triggers after a rewrite. Delete superseded execution paths and connect every supported entry directly to the same convergence point.
 - Treat compatibility, migration, rollout, rollback, observability, security/privacy, concurrency, and idempotency as design inputs when applicable—not cleanup after coding.
 - Separate requirements from proposed implementation. A PRD may constrain observable behavior without prematurely freezing replaceable internals.
 - Record trade-offs and rejected options only when they explain a consequential decision.

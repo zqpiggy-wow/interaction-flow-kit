@@ -1,6 +1,6 @@
 {
   "name": "interaction-flow-kit",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "Agent skill and CLI that turns feature requests into complete user outcomes and implementation-ready flows",
   "type": "module",
   "bin": {

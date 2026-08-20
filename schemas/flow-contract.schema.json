@@ -72,6 +72,12 @@
           "type": "array",
           "items": { "$ref": "#/$defs/dataBinding" }
         },
+        "implementation_path": {
+          "anyOf": [
+            { "$ref": "#/$defs/implementationPath" },
+            { "type": "null" }
+          ]
+        },
         "invariants": {
           "type": "array",
           "items": { "type": "string", "minLength": 1 },
@@ -89,10 +95,22 @@
     "step": {
       "type": "object",
       "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "anyOf": [
+              { "required": ["reads"], "properties": { "reads": { "minItems": 1 } } },
+              { "required": ["writes"], "properties": { "writes": { "minItems": 1 } } }
+            ]
+          },
+          "then": { "required": ["data_boundary"] }
+        }
+      ],
       "required": ["id", "action"],
       "properties": {
         "id": { "type": "string", "pattern": "^[A-Za-z][A-Za-z0-9_-]*$" },
         "actor": { "type": "string", "minLength": 1 },
+        "data_boundary": { "type": "string", "pattern": "^[A-Za-z][A-Za-z0-9_-]*$" },
         "action": { "type": "string", "minLength": 1 },
         "system_effect": { "type": "string", "minLength": 1 },
         "feedback": { "type": "string", "minLength": 1 },
@@ -176,6 +194,35 @@
         "internal_purpose": { "type": "string", "minLength": 1 },
         "lifecycle": { "type": "string", "minLength": 1 }
       }
+    },
+    "implementationPath": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["capability", "strategy", "entries", "converges_at", "state_machine", "state_owner", "side_effect_owner", "inspected_paths", "removed_paths", "negative_searches", "authority_tests", "verification"],
+      "properties": {
+        "capability": { "type": "string", "minLength": 1 },
+        "strategy": { "type": "string", "enum": ["evolve-in-place", "replace"] },
+        "entries": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 }, "uniqueItems": true },
+        "converges_at": { "type": "string", "minLength": 1 },
+        "state_machine": { "type": "string", "minLength": 1 },
+        "state_owner": { "type": "string", "minLength": 1 },
+        "side_effect_owner": { "type": "string", "minLength": 1 },
+        "inspected_paths": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 }, "uniqueItems": true },
+        "removed_paths": { "type": "array", "items": { "type": "string", "minLength": 1 }, "uniqueItems": true },
+        "negative_searches": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 }, "uniqueItems": true },
+        "authority_tests": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 }, "uniqueItems": true },
+        "verification": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 }, "uniqueItems": true }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "strategy": { "const": "replace" } }, "required": ["strategy"] },
+          "then": { "properties": { "removed_paths": { "minItems": 1 } } }
+        },
+        {
+          "if": { "properties": { "strategy": { "const": "evolve-in-place" } }, "required": ["strategy"] },
+          "then": { "properties": { "removed_paths": { "maxItems": 0 } } }
+        }
+      ]
     },
     "dataBinding": {
       "type": "object",

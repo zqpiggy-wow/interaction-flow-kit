@@ -13,6 +13,7 @@ Use an artifact only when prose is harder to implement or verify. Do not emit on
 - **Component/ownership map:** responsibilities or sources of truth cross multiple modules/services.
 - **Decision record:** alternatives have consequential trade-offs worth preserving.
 - **Rollout table:** mixed versions, migration order, flags, or rollback conditions are the main risk.
+- **Implementation-path table:** multiple entries, a rewrite, or legacy/fallback code makes the authoritative state machine or old-path cleanup ambiguous.
 
 If a short Flow Contract communicates the same decision, use that instead.
 
@@ -55,9 +56,9 @@ Include only states with a distinct product consequence.
 
 Use this only for a real durable handoff. Read [data-lineage.md](data-lineage.md) before filling it.
 
-| Stage/node | Reads | Writes | Source of truth/table | Boundary fields | User sees | Next consumer | Binding/validity |
-|---|---|---|---|---|---|---|---|
-|  |  |  |  |  |  |  |  |
+| Stage/node | Data boundary | Reads | Writes | Source of truth/table | Boundary fields | User sees | Next consumer | Binding/validity |
+|---|---|---|---|---|---|---|---|---|
+|  |  |  |  |  |  |  |  |  |
 
 ## Sequence diagram
 
@@ -100,6 +101,14 @@ Validation/open question: <evidence still needed>
 | Phase | Product behavior | Code/data compatibility | Exposure/flag | Success signal | Rollback trigger/action | Cleanup gate |
 |---|---|---|---|---|---|---|
 |  |  |  |  |  |  |  |
+
+## Implementation-path table
+
+Read [implementation-path.md](implementation-path.md) before using this for an existing capability.
+
+| Capability | Strategy | Entries | Converges at | State machine/owner | Side-effect owner | Superseded paths deleted | Negative searches | Verification |
+|---|---|---|---|---|---|---|---|---|
+|  |  |  |  |  |  |  |  |  |
 
 ## Hygiene
 

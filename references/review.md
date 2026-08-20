@@ -7,6 +7,7 @@ Use this to review a PRD, technical design, plan, prototype, or implementation. 
 1. Identify the trigger, stated request, underlying job, downstream use, and observable completion.
 2. Trace the current path through relevant entry surfaces, inputs, UI state, domain state, APIs/jobs, persistence, recovery, result surfaces, and the next action performed with the result.
    When durable data crosses stages, read [data-lineage.md](data-lineage.md) and trace the exact identity and fields rather than assuming that shared configuration means shared results.
+   When the capability has been rewritten or patched across files, read [implementation-path.md](implementation-path.md) and trace every entry, state machine, side-effect trigger, worker/listener, adapter, fallback, and compatibility branch. Treat independently executable old/new paths as a P1 architecture defect.
 3. Test the smallest set of realistic scenarios that can expose usability or consistency failures.
 4. Report only material findings, highest impact first.
 
@@ -29,6 +30,9 @@ Prioritize whether the feature is easy to use end to end:
 Then check the system invariants required to deliver that usability:
 
 - authoritative state is represented consistently across client, server, workers, and history;
+- every durable object has one owning data boundary and single writer; no flow patches or mirrors another flow's internal state;
+- cross-boundary data bindings are acyclic, or a separate orchestration boundary owns the feedback loop's coordination state, termination, idempotency, and recovery;
+- all entries for one capability converge on one authoritative state machine and side-effect owner; no legacy reducer/store/job/listener/adapter can still advance or route the feature independently;
 - retry and repeated submission do not duplicate side effects;
 - timeout, stale response, concurrent edit, and cancellation semantics are coherent when applicable;
 - inferred/defaulted consequential data can be inspected and corrected;
@@ -54,7 +58,7 @@ Do not demand branches or controls the product cannot encounter or the backend c
 | Priority | Meaning | Examples |
 |---|---|---|
 | P0 | Unsafe, destructive, or unauthorized | unrecoverable loss, unauthorized action, false critical success |
-| P1 | Blocks or seriously compromises the user job or safe implementation | no entry, dead end, lost work, duplicate side effect, unreachable result, ambiguous source of truth or unsafe migration |
+| P1 | Blocks or seriously compromises the user job or safe implementation | no entry, dead end, lost work, duplicate side effect, unreachable result, two live state machines for one capability, ambiguous source of truth or unsafe migration |
 | P2 | Creates substantial confusion, effort, avoidable error, or implementation divergence | redundant required fields, unclear running state, missing safe recovery, underspecified boundary/failure contract |
 | P3 | Local friction with limited impact | minor extra step, inconsistent secondary feedback |
 

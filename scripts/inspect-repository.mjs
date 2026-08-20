@@ -31,6 +31,12 @@ const CATEGORIES = [
     content: /(?:CREATE TABLE|enum\s+\w*Status|interface\s+\w+State|type\s+\w+State|status\s*[:=]|useStore|migration)/i,
   },
   {
+    id: 'implementation-paths',
+    description: 'State machines, reducers/stores, legacy or fallback paths, versioned/temporary branches, flags, handlers, workers, listeners, and side-effect triggers that may duplicate one capability.',
+    path: /(?:legacy|deprecated|fallback|compat|adapter|temporary|v[0-9]+|reducer|store|state.?machine|handler|worker|listener|consumer|feature.?flag)/i,
+    content: /(?:legacy|deprecated|fallback|compat|adapter|temporary|old.?path|new.?path|v[0-9]+|useReducer|createSlice|reducer\b|createStore|useStore|state.?machine|transition\b|feature.?flag|addEventListener|subscribe\(|consume\(|enqueue|retry|side.?effect)/i,
+  },
+  {
     id: 'interfaces',
     description: 'HTTP/RPC/GraphQL contracts, events, commands, and integration boundaries.',
     path: /(?:api|endpoint|handler|resolver|rpc|graphql|proto|event|webhook|client)/i,
